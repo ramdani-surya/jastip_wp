@@ -6,14 +6,14 @@ Sprint 0 hanya menyiapkan environment Docker. Elementor, WooCommerce, theme tamb
 
 ## Stack
 
-- WordPress 7.0.2, PHP 8.4 FPM
+- WordPress 7.0.3, PHP 8.4 FPM
 - MySQL 8.0
 - Nginx 1.30.4 Alpine
 - Docker Compose
 
-Baseline awal meminta WordPress 7.0.3, tetapi rilis dan official Docker tag tersebut belum tersedia saat Sprint 0 dikerjakan. Project menggunakan exact official tag `wordpress:7.0.2-php8.4-fpm`, bukan mengganti ke floating tag atau WordPress 6.x.
+Official Docker tag `wordpress:7.0.3-php8.4-fpm` belum tersedia saat Sprint 0.1 dikerjakan. Project karena itu membangun image `titip-cirebon-wordpress:7.0.3-php8.4-fpm` secara reproducible dari baseline `wordpress:7.0.2-php8.4-fpm` yang dipin sampai image digest dan tarball resmi WordPress 7.0.3. URL versi, SHA-1 resmi, dan SHA-256 tarball dipin di Docker build; versi embedded juga diverifikasi sebelum image selesai dibangun.
 
-Official image tersebut sudah menyediakan seluruh PHP extension yang dibutuhkan Sprint 0, termasuk `mbstring`, sehingga tidak ada layer extension tambahan yang perlu dipelihara.
+Base image tersebut tetap menyediakan PHP 8.4 dan seluruh PHP extension yang dibutuhkan Sprint 0, termasuk `mbstring`, sehingga stack PHP tidak berubah.
 
 ## Architecture
 
@@ -59,6 +59,8 @@ make logs           Ikuti log semua service
 make shell          Buka shell WordPress/PHP-FPM
 make db-shell       Buka MySQL sebagai user aplikasi
 make wp-install     Instal WordPress lokal secara idempoten
+make wp-upgrade     Jalankan prosedur database upgrade resmi WordPress
+make wp-verify-core Verifikasi versi dan checksum seluruh file core
 make db-backup      Buat backup database bertimestamp
 make db-restore     Restore backup dengan konfirmasi nama database
 ```
@@ -108,6 +110,20 @@ Default `.env.example` memakai `WP_ENVIRONMENT_TYPE=development` dan `WP_DEBUG=t
 - Nginx menolak eksekusi PHP dari uploads.
 - WordPress core auto-update dimatikan agar versi runtime mengikuti pinned Docker image; update dilakukan dengan perubahan image yang disengaja.
 
+## WordPress Core Updates
+
+Image menyimpan distribusi WordPress versi-pinned di `/usr/src/wordpress`. Pada startup pertama setelah perubahan versi, entrypoint project mengganti hanya file core di named volume `wordpress_data`; `wp-content`, `wp-config.php`, `.htaccess`, dan database tidak disentuh. Sinkronisasi tidak mengunduh file dan tidak menjalankan `wp core update` saat startup.
+
+Prosedur security update berikutnya:
+
+1. Pastikan tag official yang tepat tersedia, atau perbarui base image beserta digest, `WORDPRESS_VERSION`, URL versi, SHA-1 resmi, dan SHA-256 di `compose.yaml` serta `docker/php/Dockerfile`.
+2. Perbarui `target_version` di `docker/php/wordpress-entrypoint.sh` dan expected version pada target `wp-verify-core`.
+3. Jalankan `make db-backup`, lalu `make up`.
+4. Jalankan `make wp-upgrade` dan `make wp-verify-core`.
+5. Validasi admin, permalink, upload, dan persistence sebelum commit.
+
+`make wp-verify-core` membandingkan file runtime terhadap manifest SHA-256 yang dibuat dari tarball terverifikasi saat build. Perbedaan file, file hilang, atau versi selain versi pinned membuat command gagal.
+
 ## Version Checks
 
 ```bash
@@ -116,6 +132,7 @@ docker compose exec wordpress php -v
 docker compose exec db mysql --version
 docker compose exec nginx nginx -v
 docker compose version
+make wp-verify-core
 ```
 
 MySQL 8.0 digunakan karena merupakan keputusan stack Sprint 0. Lifecycle dan target database production harus ditinjau kembali sebelum deployment production.
