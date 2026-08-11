@@ -3,7 +3,7 @@ SHELL := /bin/bash
 -include .env
 export
 
-.PHONY: up down restart ps logs shell db-shell wp-install wp-upgrade wp-verify-core db-backup db-restore
+.PHONY: up down restart ps logs shell db-shell wp-install wp-upgrade wp-verify-core design-system design-system-verify db-backup db-restore
 
 up:
 	docker compose up -d --build
@@ -41,6 +41,12 @@ wp-upgrade:
 wp-verify-core:
 	@docker compose exec -T wordpress sh -c 'cd /var/www/html && sha256sum --check --strict --quiet /usr/local/share/wordpress-core.sha256'
 	@docker compose exec -T wordpress php -r 'require "/var/www/html/wp-includes/version.php"; if ($$wp_version !== "7.0.3") { fwrite(STDERR, "Unexpected WordPress version: $$wp_version\n"); exit(1); } echo "Verified WordPress $$wp_version core files.\n";'
+
+design-system:
+	@docker compose exec -T -e DESIGN_SYSTEM_MODE=apply wordpress php < docker/php/setup-design-system.php
+
+design-system-verify:
+	@docker compose exec -T -e DESIGN_SYSTEM_MODE=verify wordpress php < docker/php/setup-design-system.php
 
 db-backup:
 	@set -eu; \

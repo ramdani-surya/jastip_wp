@@ -2,13 +2,15 @@
 
 Fondasi development untuk website Titip Cirebon, bisnis jastip/open-PO produk dan makanan khas Cirebon untuk pelanggan di Sumedang.
 
-Sprint 0 hanya menyiapkan environment Docker. Elementor, WooCommerce, theme tambahan, custom plugin, dan fitur bisnis belum dipasang atau dibuat.
+Sprint 0 menyiapkan environment Docker. Sprint 1B menambahkan fondasi visual Elementor tanpa membuat homepage, katalog, order system, atau fitur bisnis.
 
 ## Stack
 
 - WordPress 7.0.3, PHP 8.4 FPM
 - MySQL 8.0
 - Nginx 1.30.4 Alpine
+- Elementor 4.2.2 dan Elementor Pro 4.0.4
+- Hello Elementor 3.4.9
 - Docker Compose
 
 Official Docker tag `wordpress:7.0.3-php8.4-fpm` belum tersedia saat Sprint 0.1 dikerjakan. Project karena itu membangun image `titip-cirebon-wordpress:7.0.3-php8.4-fpm` secara reproducible dari baseline `wordpress:7.0.2-php8.4-fpm` yang dipin sampai image digest dan tarball resmi WordPress 7.0.3. URL versi, SHA-1 resmi, dan SHA-256 tarball dipin di Docker build; versi embedded juga diverifikasi sebelum image selesai dibangun.
@@ -61,6 +63,8 @@ make db-shell       Buka MySQL sebagai user aplikasi
 make wp-install     Instal WordPress lokal secara idempoten
 make wp-upgrade     Jalankan prosedur database upgrade resmi WordPress
 make wp-verify-core Verifikasi versi dan checksum seluruh file core
+make design-system  Terapkan Titip Cirebon design system secara idempoten
+make design-system-verify Verifikasi design tokens, styles, dan preview page
 make db-backup      Buat backup database bertimestamp
 make db-restore     Restore backup dengan konfirmasi nama database
 ```
@@ -101,6 +105,53 @@ Direktori `wordpress/wp-content/plugins` dan `wordpress/wp-content/themes` disia
 PHP memiliki memory limit 512 MB, upload/post limit 64 MB, timeout 120 detik, dan OPcache aktif. `opcache.validate_timestamps=1` serta `opcache.revalidate_freq=0` membuat perubahan PHP terlihat tanpa restart container.
 
 Default `.env.example` memakai `WP_ENVIRONMENT_TYPE=development` dan `WP_DEBUG=true`. Jangan gunakan konfigurasi debug ini di production. Production harus memakai secrets tersendiri, `WP_DEBUG=0`, HTTPS, dan konfigurasi deployment yang ditinjau ulang.
+
+## Modern Local Food Design System
+
+Jalankan setup setelah Elementor Free, Elementor Pro, dan Hello Elementor aktif:
+
+```bash
+make db-backup
+make design-system
+make design-system-verify
+```
+
+Setup memakai Elementor Document API dan aman dijalankan ulang. Active Kit ID 11 diperbarui tanpa menghapus setting lain. Halaman terpublikasi `Design System Preview` tersedia di <http://localhost:8080/design-system-preview/> dengan template Elementor Canvas dan tidak dijadikan homepage.
+
+### Design Tokens
+
+Global colors:
+
+```text
+Primary       #B45309    Primary Dark  #78350F
+Secondary     #0F766E    Accent        #F59E0B
+Background    #FFFDF8    Surface       #FFFFFF
+Text          #292524    Text Muted    #78716C
+Border        #E7E5E4    Success       #15803D
+Warning       #B45309    Error         #B91C1C
+```
+
+Heading memakai Poppins 600/700. Body, labels, dan buttons memakai Inter 400/500/600 dengan system-font fallback dan `font-display: swap`. Content width maksimum 1200px; horizontal padding desktop/tablet/mobile adalah 24/20/16px; section spacing adalah 80/64/48px.
+
+### Component Classes
+
+Utility styles disimpan pada blok bertanda di WordPress Additional CSS sehingga setup dapat mengganti blok milik project tanpa menimpa CSS lain:
+
+```text
+.tc-section                 Standard section spacing
+.tc-section--compact        Compact section spacing
+.tc-card                    Surface card
+.tc-card--elevated          Elevated card shadow
+.tc-product-card            Product card foundation
+.tc-badge                   Badge foundation and color variants
+.tc-button--secondary       Secondary Elementor button
+.tc-form                    Form layout and focus behavior
+.tc-local-accent            Subtle local color accent
+```
+
+Gunakan Global Colors dan Global Fonts untuk widget Elementor baru. Gunakan utility class hanya untuk pola komponen yang tidak tersedia sebagai Site Setting. Jangan menambahkan inline CSS per widget atau membuat salinan blok Additional CSS secara manual.
+
+Untuk perubahan design system berikutnya, ubah declarative settings, preview elements, atau controlled CSS di `docker/php/setup-design-system.php`, jalankan kedua command di atas, lalu validasi desktop, tablet, dan mobile sebelum commit.
 
 ## Security Baseline
 
