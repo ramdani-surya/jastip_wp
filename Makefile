@@ -3,7 +3,7 @@ SHELL := /bin/bash
 -include .env
 export
 
-.PHONY: up down restart ps logs shell db-shell wp-install wp-upgrade wp-verify-core design-system design-system-verify site-components site-components-verify db-backup db-restore
+.PHONY: up down restart ps logs shell db-shell wp-install wp-upgrade wp-verify-core design-system design-system-verify site-components site-components-verify homepage homepage-verify db-backup db-restore
 
 up:
 	docker compose up -d --build
@@ -53,6 +53,14 @@ site-components:
 
 site-components-verify:
 	@docker compose exec -T -e SITE_COMPONENTS_MODE=verify wordpress php < docker/php/setup-site-components.php
+
+homepage:
+	@docker compose exec -T -e HOMEPAGE_MODE=apply wordpress php < docker/php/setup-homepage.php
+	@$(MAKE) --no-print-directory site-components
+	@$(MAKE) --no-print-directory homepage-verify
+
+homepage-verify:
+	@docker compose exec -T -e HOMEPAGE_MODE=verify wordpress php < docker/php/setup-homepage.php
 
 db-backup:
 	@set -eu; \

@@ -2,7 +2,7 @@
 
 Fondasi development untuk website Titip Cirebon, bisnis jastip/open-PO produk dan makanan khas Cirebon untuk pelanggan di Sumedang.
 
-Sprint 0 menyiapkan environment Docker. Sprint 1B menambahkan fondasi visual Elementor, lalu Sprint 1C menambahkan reusable global components dan site shell tanpa membuat homepage, katalog, order system, atau fitur bisnis.
+Sprint 0 menyiapkan environment Docker. Sprint 1B menambahkan fondasi visual Elementor, Sprint 1C menambahkan reusable global components dan site shell, lalu Sprint 2 membangun homepage MVP untuk validasi pasar tanpa product database, order system, atau tracking backend.
 
 ## Stack
 
@@ -67,6 +67,8 @@ make design-system  Terapkan Titip Cirebon design system secara idempoten
 make design-system-verify Verifikasi design tokens, styles, dan preview page
 make site-components Terapkan global components dan site shell secara idempoten
 make site-components-verify Verifikasi Theme Builder, reusable templates, dan preview
+make homepage        Terapkan Homepage MVP, support pages, navigation, dan SEO
+make homepage-verify Verifikasi ownership, konten, media, layout contract, dan SEO
 make db-backup      Buat backup database bertimestamp
 make db-restore     Restore backup dengan konfirmasi nama database
 ```
@@ -186,6 +188,43 @@ Primary navigation berisi Produk, Cara Order, Lacak Pesanan, dan Tentang Kami. T
 CSS tambahan disimpan pada blok `TITIP CIREBON SITE COMPONENTS` di WordPress Additional CSS. Script hanya mengganti blok miliknya, mempertahankan CSS lain, memakai token Sprint 1B, dan tidak menggunakan `!important` atau JavaScript custom. Header mobile menggunakan native Elementor Pro Nav Menu pada breakpoint 767px dengan tombol dan link minimum 44px.
 
 Untuk maintenance, ubah struktur declarative atau controlled CSS di `docker/php/setup-site-components.php`, lalu jalankan apply dan verify. Stable ownership marker membuat rerun memperbarui menu, template, dan preview yang sama; konflik slug/nama dengan konten pengguna menyebabkan proses berhenti sebelum overwrite.
+
+## Homepage MVP
+
+Jalankan Sprint 2 setelah design system dan site components terverifikasi:
+
+```bash
+make db-backup
+make design-system-verify
+make site-components-verify
+make homepage
+make homepage-verify
+```
+
+`make homepage` menjalankan setup deklaratif di `docker/php/setup-homepage.php`, memperbarui ulang site components agar navigation memakai route final, lalu memverifikasi hasil. Command aman dijalankan ulang: Home, empat support pages, dua Media Library placeholders, Custom Code SEO, blok Additional CSS, dan menu item dikelola dengan ID serta ownership marker yang stabil. Konflik slug Home dihentikan tanpa overwrite. Support page user yang sudah published boleh dipakai sebagai destination tanpa mengubah kontennya; draft/private user content tidak diambil alih.
+
+Homepage terpublikasi di <http://localhost:8080/> dan memakai Elementor Full Width agar global Header/Footer Sprint 1C tetap tampil. Urutan kontennya adalah Hero, PO Minggu Ini, alasan memilih layanan, Cara Order, CTA WhatsApp ringkas, Jadwal PO, Area Pengiriman, placeholder tracking, dan CTA WhatsApp final. Tiga kartu produk adalah native editable Elementor instances yang memakai class/token Product Card Sprint 1C; tidak ada database produk atau harga fiktif final.
+
+### Mengganti Placeholder Image
+
+Script membuat dua PNG deterministik di Media Library: satu placeholder hero dan satu placeholder produk 4:3. Homepage memiliki empat widget Image terpisah—hero dan satu pada setiap Product Card. Untuk mengganti gambar, buka Home dengan Elementor, pilih widget Image terkait, pilih **Replace**, lalu simpan. Rerun `make homepage` mempertahankan attachment pengganti milik developer dan hanya memakai placeholder managed untuk widget yang belum diganti.
+
+### Routes dan Placeholder Fitur
+
+Navigation Header/Footer mengarah ke halaman berikut agar tidak ada broken route:
+
+```text
+/produk/          Placeholder katalog; kembali ke section PO Minggu Ini
+/cara-order/      Ringkasan cara order; kembali ke section Cara Order
+/lacak-pesanan/   Informasi fitur yang sedang disiapkan; tanpa form/backend
+/tentang-kami/    Deskripsi faktual layanan dan jadwal
+```
+
+CTA WhatsApp tetap memakai placeholder internal absolut `/#whatsapp-order`. Ganti destination pada source declarative setelah nomor bisnis resmi tersedia; jangan memasukkan nomor sementara. Homepage tidak menambahkan WooCommerce, CPT, checkout, payment, akun, shipping calculator, tracking backend, analytics, JavaScript custom, atau plugin baru.
+
+### Homepage SEO
+
+Site name tetap `Titip Cirebon` dan tagline menjadi `Jajanan dan Produk Pilihan dari Cirebon`, sehingga WordPress menghasilkan native document title. Meta description disimpan sebagai Elementor Pro Custom Code yang hanya berlaku pada condition `include/singular/front_page`. Untuk maintenance, ubah copy/struktur/CSS/SEO di `docker/php/setup-homepage.php`, jalankan `make homepage` dua kali untuk menguji idempotency, lalu validasi browser pada desktop, tablet, dan mobile sebelum commit.
 
 ## Security Baseline
 

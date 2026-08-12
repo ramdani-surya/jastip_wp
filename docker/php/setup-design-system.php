@@ -28,6 +28,25 @@ function tc_assert(bool $condition, string $message): void
     }
 }
 
+function tc_assert_homepage_state(): void
+{
+    $mode = (string) get_option('show_on_front');
+    $frontId = (int) get_option('page_on_front');
+
+    if ($mode === 'posts' && $frontId === 0) {
+        return;
+    }
+
+    $ownedHomeId = (int) get_option('titip_cirebon_homepage_id', 0);
+    tc_assert(
+        $mode === 'page'
+        && $frontId > 0
+        && $frontId === $ownedHomeId
+        && get_post_meta($frontId, '_titip_cirebon_homepage_owned', true) === 'home',
+        'Homepage must remain posts/0 or the owned Sprint 2 static Home page.'
+    );
+}
+
 function tc_dimensions(int $top, int $right, int $bottom, int $left): array
 {
     return [
@@ -835,6 +854,19 @@ function tc_apply(): void
     Elementor_Plugin::$instance->files_manager->clear_cache();
     Elementor_Post_CSS::create(TC_KIT_ID)->update();
     Elementor_Post_CSS::create($pageId)->update();
+    $homeId = (int) get_option('titip_cirebon_homepage_id', 0);
+    if ($homeId > 0 && get_post_meta($homeId, '_titip_cirebon_homepage_owned', true) === 'home') {
+        Elementor_Post_CSS::create($homeId)->update();
+    }
+    $supportIds = get_option('titip_cirebon_homepage_support_ids', []);
+    if (is_array($supportIds)) {
+        foreach ($supportIds as $key => $supportId) {
+            $supportId = (int) $supportId;
+            if ($supportId > 0 && get_post_meta($supportId, '_titip_cirebon_homepage_owned', true) === (string) $key) {
+                Elementor_Post_CSS::create($supportId)->update();
+            }
+        }
+    }
 
     echo "Design system applied to Elementor Kit " . TC_KIT_ID . ".\n";
     echo "Preview page ID: {$pageId}\n";
@@ -900,8 +932,8 @@ function tc_verify(): void
     tc_assert(str_contains($normalizedElements, 'tc-product-card') && str_contains($normalizedElements, 'globals/colors?id=tc-primary-dark'), 'Preview Elementor data is incomplete.');
     tc_assert(str_contains($normalizedElements, '"css_classes":"tc-section tc-local-accent"'), 'Preview Container utility classes are not stored in Elementor 4 format.');
 
-    tc_assert(get_option('show_on_front') === 'posts', 'Homepage mode changed unexpectedly.');
-    tc_assert((int) get_option('page_on_front') === 0, 'Design preview must not become the homepage.');
+    tc_assert_homepage_state();
+    tc_assert((int) get_option('page_on_front') !== $pageId, 'Design preview must not become the homepage.');
 
     $generatedKitCss = Elementor_Post_CSS::create(TC_KIT_ID)->get_path();
     $generatedPageCss = Elementor_Post_CSS::create($pageId)->get_path();

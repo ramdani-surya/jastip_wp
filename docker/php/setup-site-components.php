@@ -33,6 +33,53 @@ function tc_site_assert(bool $condition, string $message): void
     }
 }
 
+function tc_site_assert_homepage_state(): void
+{
+    $mode = (string) get_option('show_on_front');
+    $frontId = (int) get_option('page_on_front');
+    if ($mode === 'posts' && $frontId === 0) {
+        return;
+    }
+
+    $ownedHomeId = (int) get_option('titip_cirebon_homepage_id', 0);
+    tc_site_assert(
+        $mode === 'page'
+        && $frontId > 0
+        && $frontId === $ownedHomeId
+        && get_post_meta($frontId, '_titip_cirebon_homepage_owned', true) === 'home',
+        'Homepage must remain posts/0 or the owned Sprint 2 static Home page.'
+    );
+}
+
+function tc_site_routes(): array
+{
+    $fallbacks = [
+        'products' => home_url('/#produk'),
+        'order-guide' => home_url('/#cara-order'),
+        'tracking' => home_url('/#lacak-pesanan'),
+        'about' => home_url('/#tentang-kami'),
+    ];
+    $keys = [
+        'products' => 'produk',
+        'order-guide' => 'cara-order',
+        'tracking' => 'lacak-pesanan',
+        'about' => 'tentang-kami',
+    ];
+    $supportIds = get_option('titip_cirebon_homepage_support_ids', []);
+    if (!is_array($supportIds)) {
+        return $fallbacks;
+    }
+
+    foreach ($keys as $route => $key) {
+        $id = (int) ($supportIds[$key] ?? 0);
+        $post = $id > 0 ? get_post($id) : null;
+        if ($post instanceof WP_Post && $post->post_type === 'page' && $post->post_status === 'publish') {
+            $fallbacks[$route] = get_permalink($id);
+        }
+    }
+    return $fallbacks;
+}
+
 function tc_site_size(float|int $size, string $unit = 'px'): array
 {
     return ['unit' => $unit, 'size' => $size, 'sizes' => []];
@@ -159,7 +206,7 @@ function tc_site_preflight(): void
         tc_site_assert(($colors[$id] ?? '') === $value, "Sprint 1B color {$id} changed unexpectedly.");
     }
     tc_site_assert(($kit['container_width']['size'] ?? null) === 1200, 'Sprint 1B container width changed unexpectedly.');
-    tc_site_assert(get_option('show_on_front') === 'posts' && (int) get_option('page_on_front') === 0, 'Homepage state must remain posts/0.');
+    tc_site_assert_homepage_state();
 
     $hotfixes = [
         '/var/www/html/wp-content/plugins/elementor/modules/global-classes/atomic-global-styles.php' => '?string $key = null',
@@ -269,11 +316,12 @@ function tc_site_resolve_menu(bool $allowCreate): WP_Term
 function tc_site_apply_menu(): WP_Term
 {
     $menu = tc_site_resolve_menu(true);
+    $routes = tc_site_routes();
     $expected = [
-        'products' => ['Produk', home_url('/#produk')],
-        'order-guide' => ['Cara Order', home_url('/#cara-order')],
-        'tracking' => ['Lacak Pesanan', home_url('/#lacak-pesanan')],
-        'about' => ['Tentang Kami', home_url('/#tentang-kami')],
+        'products' => ['Produk', $routes['products']],
+        'order-guide' => ['Cara Order', $routes['order-guide']],
+        'tracking' => ['Lacak Pesanan', $routes['tracking']],
+        'about' => ['Tentang Kami', $routes['about']],
     ];
 
     $owned = [];
@@ -693,7 +741,7 @@ function tc_site_header_elements(string $menuSlug): array
         'toggle_size' => tc_site_size(24),
         '_css_classes' => 'tc-primary-nav',
     ]);
-    $cta = tc_site_button('header-primary-cta', 'Pesan Sekarang', '#whatsapp-order', 'tc-header-cta');
+    $cta = tc_site_button('header-primary-cta', 'Pesan Sekarang', home_url('/#whatsapp-order'), 'tc-header-cta');
     $inner = tc_site_container('header-inner', 'tc-shell-container tc-header-inner', [$brand, $navigation, $cta], [
         'flex_direction' => 'row',
         'align_items' => 'center',
@@ -705,15 +753,17 @@ function tc_site_header_elements(string $menuSlug): array
 
 function tc_site_footer_elements(): array
 {
-    $home = esc_url(home_url('/'));
+    $routes = array_map('esc_url', tc_site_routes());
+    $whatsapp = esc_url(home_url('/#whatsapp-order'));
+    $year = wp_date('Y');
     $html = <<<HTML
 <div class="tc-footer-grid">
   <section aria-labelledby="tc-footer-brand"><h2 id="tc-footer-brand" class="tc-footer-brand">Titip Cirebon</h2><p class="tc-footer-description">Titip produk dan jajanan pilihan langsung dari Cirebon untuk kamu di Sumedang.</p></section>
-  <nav class="tc-footer-nav" aria-label="Footer navigation"><h2 class="tc-footer-heading">Navigasi</h2><ul><li><a href="{$home}#produk">Produk</a></li><li><a href="{$home}#cara-order">Cara Order</a></li><li><a href="{$home}#lacak-pesanan">Lacak Pesanan</a></li><li><a href="{$home}#tentang-kami">Tentang Kami</a></li></ul></nav>
-  <section aria-labelledby="tc-footer-order"><h2 id="tc-footer-order" class="tc-footer-heading">Order</h2><p class="tc-footer-copy">Hubungi kami ketika daftar produk dan nomor WhatsApp resmi sudah tersedia.</p><a class="elementor-button tc-footer-order" href="#whatsapp-order">Pesan lewat WhatsApp</a></section>
+  <nav class="tc-footer-nav" aria-label="Footer navigation"><h2 class="tc-footer-heading">Navigasi</h2><ul><li><a href="{$routes['products']}">Produk</a></li><li><a href="{$routes['order-guide']}">Cara Order</a></li><li><a href="{$routes['tracking']}">Lacak Pesanan</a></li><li><a href="{$routes['about']}">Tentang Kami</a></li></ul></nav>
+  <section aria-labelledby="tc-footer-order"><h2 id="tc-footer-order" class="tc-footer-heading">Order</h2><p class="tc-footer-copy">Siapkan daftar produk yang kamu inginkan, lalu pesan melalui WhatsApp.</p><a class="elementor-button tc-footer-order" href="{$whatsapp}">Pesan via WhatsApp</a></section>
   <section aria-labelledby="tc-footer-schedule"><h2 id="tc-footer-schedule" class="tc-footer-heading">Jadwal</h2><p class="tc-footer-copy">Open PO Senin–Kamis<br>Pengiriman setiap Sabtu</p></section>
 </div>
-<div class="tc-footer-bottom">&copy; Titip Cirebon. Informasi pada komponen preview masih berupa fondasi antarmuka.</div>
+<div class="tc-footer-bottom">&copy; {$year} Titip Cirebon. Titip produk Cirebon untuk Sumedang.</div>
 HTML;
     $content = tc_site_widget('footer-content', 'html', ['html' => $html]);
     $inner = tc_site_container('footer-inner', 'tc-shell-container tc-footer-inner', [$content]);
@@ -722,23 +772,25 @@ HTML;
 
 function tc_site_component_specs(): array
 {
+    $routes = tc_site_routes();
+    $whatsappUrl = home_url('/#whatsapp-order');
     $primary = [tc_site_container('component-primary-cta', 'tc-component-template', [
-        tc_site_button('component-primary-button', 'Pesan Sekarang', '#whatsapp-order'),
+        tc_site_button('component-primary-button', 'Pesan Sekarang', $whatsappUrl),
     ])];
     $secondary = [tc_site_container('component-secondary-cta', 'tc-component-template', [
-        tc_site_button('component-secondary-button', 'Lihat Produk', '#produk', 'tc-button--secondary'),
+        tc_site_button('component-secondary-button', 'Lihat Produk', $routes['products'], 'tc-button--secondary'),
     ])];
     $utility = [tc_site_container('component-utility-cta', 'tc-component-template', [
-        tc_site_button('component-utility-button', 'Lacak Pesanan', '#lacak-pesanan', 'tc-button--utility'),
+        tc_site_button('component-utility-button', 'Lacak Pesanan', $routes['tracking'], 'tc-button--utility'),
     ])];
     $whatsapp = [tc_site_container('component-whatsapp', 'tc-component-template tc-whatsapp-pattern', [
-        tc_site_heading('component-whatsapp-heading', 'Butuh bantuan untuk memesan?', 'h3', 'tc-h3'),
+        tc_site_heading('component-whatsapp-heading', 'Mau titip dari Cirebon?', 'h2', 'tc-h2'),
         tc_site_widget('component-whatsapp-copy', 'text-editor', [
-            'editor' => '<p>Gunakan CTA ini setelah nomor WhatsApp resmi ditambahkan. Tautan saat ini adalah placeholder internal yang aman.</p>',
+            'editor' => '<p>Kirim daftar produk yang kamu inginkan. Kami bantu cek dan proses pesanannya.</p>',
             '__globals__' => ['text_color' => tc_site_global_color('text'), 'typography_typography' => tc_site_global_typography('tc-body')],
         ]),
-        tc_site_button('component-whatsapp-button', 'Pesan via WhatsApp', '#whatsapp-order'),
-    ], ['_element_id' => 'whatsapp-order'])];
+        tc_site_button('component-whatsapp-button', 'Pesan via WhatsApp', $whatsappUrl),
+    ])];
 
     $productHtml = <<<'HTML'
 <article class="tc-product-card">
@@ -761,10 +813,10 @@ HTML;
 
     $trustHtml = <<<'HTML'
 <div class="tc-trust-grid">
-  <article class="tc-trust-card"><span class="tc-trust-card__icon" aria-hidden="true">✓</span><h3>Tidak perlu antre</h3><p>Contoh benefit singkat yang menjelaskan kemudahan layanan.</p></article>
-  <article class="tc-trust-card"><span class="tc-trust-card__icon" aria-hidden="true">＋</span><h3>Beberapa toko</h3><p>Pattern untuk menjelaskan cara menggabungkan beberapa titipan.</p></article>
-  <article class="tc-trust-card"><span class="tc-trust-card__icon" aria-hidden="true">⌂</span><h3>Pengantaran terjadwal</h3><p>Informasi jadwal disampaikan jelas tanpa klaim berlebihan.</p></article>
-  <article class="tc-trust-card"><span class="tc-trust-card__icon" aria-hidden="true">i</span><h3>Informasi transparan</h3><p>Gunakan kartu ini untuk detail yang membantu membangun kepercayaan.</p></article>
+  <article class="tc-trust-card"><span class="tc-trust-card__icon" aria-hidden="true">✓</span><h3>Tidak Perlu Antre</h3><p>Kami yang belikan langsung di Cirebon.</p></article>
+  <article class="tc-trust-card"><span class="tc-trust-card__icon" aria-hidden="true">＋</span><h3>Bisa Titip dari Beberapa Toko</h3><p>Pesan beberapa produk dari toko berbeda dalam satu kali titip.</p></article>
+  <article class="tc-trust-card"><span class="tc-trust-card__icon" aria-hidden="true">⌂</span><h3>Diantar sampai Rumah</h3><p>Pesanan dibawa ke Sumedang dan bisa diantar ke lokasi kamu.</p></article>
+  <article class="tc-trust-card"><span class="tc-trust-card__icon" aria-hidden="true">i</span><h3>Bisa COD</h3><p>Tersedia opsi COD sesuai area pengiriman.</p></article>
 </div>
 HTML;
     $trust = [tc_site_container('component-trust-cards', 'tc-component-template', [tc_site_widget('component-trust-html', 'html', ['html' => $trustHtml])])];
@@ -898,6 +950,19 @@ function tc_site_apply(): void
     if ($designPreviewId > 0 && get_post_meta($designPreviewId, '_titip_cirebon_design_system_preview', true) === '1') {
         $regenerationIds[] = $designPreviewId;
     }
+    $homeId = (int) get_option('titip_cirebon_homepage_id', 0);
+    if ($homeId > 0 && get_post_meta($homeId, '_titip_cirebon_homepage_owned', true) === 'home') {
+        $regenerationIds[] = $homeId;
+    }
+    $supportIds = get_option('titip_cirebon_homepage_support_ids', []);
+    if (is_array($supportIds)) {
+        foreach ($supportIds as $key => $supportId) {
+            $supportId = (int) $supportId;
+            if ($supportId > 0 && get_post_meta($supportId, '_titip_cirebon_homepage_owned', true) === (string) $key) {
+                $regenerationIds[] = $supportId;
+            }
+        }
+    }
     foreach (array_unique($regenerationIds) as $id) {
         Elementor_Post_CSS::create($id)->update();
     }
@@ -912,11 +977,12 @@ function tc_site_apply(): void
 function tc_site_verify(): void
 {
     $menu = tc_site_resolve_menu(false);
+    $routes = tc_site_routes();
     $expectedMenu = [
-        ['Produk', home_url('/#produk')],
-        ['Cara Order', home_url('/#cara-order')],
-        ['Lacak Pesanan', home_url('/#lacak-pesanan')],
-        ['Tentang Kami', home_url('/#tentang-kami')],
+        ['Produk', $routes['products']],
+        ['Cara Order', $routes['order-guide']],
+        ['Lacak Pesanan', $routes['tracking']],
+        ['Tentang Kami', $routes['about']],
     ];
     $items = wp_get_nav_menu_items($menu->term_id) ?: [];
     tc_site_assert(count($items) === 4, 'Primary navigation must contain exactly four items.');
@@ -968,7 +1034,12 @@ function tc_site_verify(): void
     $headerData = (string) get_post_meta($resolved['header'], '_elementor_data', true);
     $footerData = (string) get_post_meta($resolved['footer'], '_elementor_data', true);
     tc_site_assert(str_contains($headerData, 'tc-site-header') && str_contains($headerData, 'nav-menu') && str_contains($headerData, 'Pesan Sekarang'), 'Header Elementor structure is incomplete.');
-    tc_site_assert(str_contains($footerData, 'tc-site-footer') && str_contains($footerData, 'Open PO Senin') && str_contains($footerData, '#whatsapp-order'), 'Footer Elementor structure is incomplete.');
+    tc_site_assert(
+        str_contains($footerData, 'tc-site-footer')
+        && str_contains($footerData, 'Open PO Senin')
+        && str_contains($footerData, '#whatsapp-order'),
+        'Footer Elementor structure is incomplete.'
+    );
 
     $previewId = $resolved[TC_SITE_PREVIEW_KEY];
     tc_site_assert(get_page_template_slug($previewId) === 'elementor_header_footer', 'Preview must use Elementor Full Width with global shell.');
@@ -984,7 +1055,7 @@ function tc_site_verify(): void
         tc_site_assert(str_contains($css, $selector), "Required selector {$selector} is missing.");
     }
     tc_site_assert(!preg_match('/(<script|@keyframes|parallax|lottie|video)/i', $headerData . $footerData . $previewData . $css), 'Forbidden heavy/custom behavior found.');
-    tc_site_assert(get_option('show_on_front') === 'posts' && (int) get_option('page_on_front') === 0, 'Homepage state changed unexpectedly.');
+    tc_site_assert_homepage_state();
 
     echo "Site components verification passed.\n";
     echo "Header template ID: {$resolved['header']}\n";
