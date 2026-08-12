@@ -2,7 +2,7 @@
 
 Fondasi development untuk website Titip Cirebon, bisnis jastip/open-PO produk dan makanan khas Cirebon untuk pelanggan di Sumedang.
 
-Sprint 0 menyiapkan environment Docker. Sprint 1B menambahkan fondasi visual Elementor tanpa membuat homepage, katalog, order system, atau fitur bisnis.
+Sprint 0 menyiapkan environment Docker. Sprint 1B menambahkan fondasi visual Elementor, lalu Sprint 1C menambahkan reusable global components dan site shell tanpa membuat homepage, katalog, order system, atau fitur bisnis.
 
 ## Stack
 
@@ -65,6 +65,8 @@ make wp-upgrade     Jalankan prosedur database upgrade resmi WordPress
 make wp-verify-core Verifikasi versi dan checksum seluruh file core
 make design-system  Terapkan Titip Cirebon design system secara idempoten
 make design-system-verify Verifikasi design tokens, styles, dan preview page
+make site-components Terapkan global components dan site shell secara idempoten
+make site-components-verify Verifikasi Theme Builder, reusable templates, dan preview
 make db-backup      Buat backup database bertimestamp
 make db-restore     Restore backup dengan konfirmasi nama database
 ```
@@ -152,6 +154,38 @@ Utility styles disimpan pada blok bertanda di WordPress Additional CSS sehingga 
 Gunakan Global Colors dan Global Fonts untuk widget Elementor baru. Gunakan utility class hanya untuk pola komponen yang tidak tersedia sebagai Site Setting. Jangan menambahkan inline CSS per widget atau membuat salinan blok Additional CSS secara manual.
 
 Untuk perubahan design system berikutnya, ubah declarative settings, preview elements, atau controlled CSS di `docker/php/setup-design-system.php`, jalankan kedua command di atas, lalu validasi desktop, tablet, dan mobile sebelum commit.
+
+## Global Components and Site Shell
+
+Jalankan setup Sprint 1C setelah design system terverifikasi:
+
+```bash
+make design-system-verify
+make site-components
+make site-components-verify
+```
+
+Setup membuat satu WordPress menu, satu global Header, satu global Footer, dan reusable Elementor Container templates. Header dan Footer memakai Elementor Pro Theme Builder dengan condition `include/general`, sehingga shell berlaku global tanpa mengubah homepage. Preview tersedia di <http://localhost:8080/site-components-preview/> dan memakai Elementor Full Width agar global shell dapat diperiksa bersama komponennya.
+
+Reusable templates yang dikelola script:
+
+```text
+Primary CTA                 Pesan Sekarang
+Secondary CTA               Lihat Produk
+Utility CTA                 Lacak Pesanan
+WhatsApp CTA                Internal placeholder #whatsapp-order
+Product Card                Placeholder image, badge, price, dan CTA
+Product Badges              Reusable availability/status variants
+Trust Cards                 Lightweight information-card grid
+Section Heading             Eyebrow, heading, description, optional CTA
+Basic Content Pattern       Two-column informational pattern
+```
+
+Primary navigation berisi Produk, Cara Order, Lacak Pesanan, dan Tentang Kami. Target masih berupa internal homepage anchors karena halaman bisnis final berada di luar Sprint 1C. WhatsApp CTA sengaja memakai `#whatsapp-order`; ganti dengan URL resmi hanya setelah nomor bisnis dikonfirmasi. Jangan memasukkan nomor, alamat, email, atau akun sosial sementara.
+
+CSS tambahan disimpan pada blok `TITIP CIREBON SITE COMPONENTS` di WordPress Additional CSS. Script hanya mengganti blok miliknya, mempertahankan CSS lain, memakai token Sprint 1B, dan tidak menggunakan `!important` atau JavaScript custom. Header mobile menggunakan native Elementor Pro Nav Menu pada breakpoint 767px dengan tombol dan link minimum 44px.
+
+Untuk maintenance, ubah struktur declarative atau controlled CSS di `docker/php/setup-site-components.php`, lalu jalankan apply dan verify. Stable ownership marker membuat rerun memperbarui menu, template, dan preview yang sama; konflik slug/nama dengan konten pengguna menyebabkan proses berhenti sebelum overwrite.
 
 ## Security Baseline
 
