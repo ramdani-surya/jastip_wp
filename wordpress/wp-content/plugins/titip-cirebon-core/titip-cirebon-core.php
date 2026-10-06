@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Titip Cirebon Core
  * Plugin URI:        https://titipcirebon.com
- * Description:       Core business logic for Titip Cirebon — product catalog, weekly offers, and dynamic shortcodes.
- * Version:           1.0.0
+ * Description:       Core business logic for Titip Cirebon — product catalog, weekly offers, order management, and dynamic shortcodes.
+ * Version:           1.1.0
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            Titip Cirebon
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'TC_CORE_VERSION', '1.0.0' );
+define( 'TC_CORE_VERSION', '1.1.0' );
 define( 'TC_CORE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'TC_CORE_URL', plugin_dir_url( __FILE__ ) );
 
@@ -24,38 +24,44 @@ define( 'TC_CORE_URL', plugin_dir_url( __FILE__ ) );
 require_once TC_CORE_PATH . 'includes/class-tc-product.php';
 require_once TC_CORE_PATH . 'includes/class-tc-weekly-offer.php';
 require_once TC_CORE_PATH . 'includes/class-tc-shortcode-catalog.php';
+require_once TC_CORE_PATH . 'includes/class-tc-order.php';
 
 /**
  * Bootstrap all plugin components.
  */
 add_action( 'plugins_loaded', function () {
-    TC_Product::get_instance();
-    TC_Weekly_Offer::get_instance();
-    TC_Shortcode_Catalog::get_instance();
+	TC_Product::get_instance();
+	TC_Weekly_Offer::get_instance();
+	TC_Shortcode_Catalog::get_instance();
+	TC_Order::get_instance();
 } );
 
 /**
  * Activation: register CPT/taxonomy early, seed default terms, flush rewrites.
  */
 register_activation_hook( __FILE__, function () {
-    // Ensure CPT + taxonomy are registered before seeding terms.
-    $product = TC_Product::get_instance();
-    $product->register_post_type();
-    $product->register_taxonomy();
+	// Ensure CPT + taxonomy are registered before seeding terms.
+	$product = TC_Product::get_instance();
+	$product->register_post_type();
+	$product->register_taxonomy();
 
-    // Ensure Weekly Offer CPT is registered for rewrite rules.
-    $offer = TC_Weekly_Offer::get_instance();
-    $offer->register_post_type();
+	// Ensure Weekly Offer CPT is registered for rewrite rules.
+	$offer = TC_Weekly_Offer::get_instance();
+	$offer->register_post_type();
 
-    // Seed default product categories.
-    $defaults = array( 'Jajanan', 'Makanan', 'Minuman', 'Oleh-oleh', 'Non-Makanan', 'Lainnya' );
-    foreach ( $defaults as $term_name ) {
-        if ( ! term_exists( $term_name, 'tc_product_cat' ) ) {
-            wp_insert_term( $term_name, 'tc_product_cat' );
-        }
-    }
+	// Ensure Order CPT is registered.
+	$order = TC_Order::get_instance();
+	$order->register_post_type();
 
-    flush_rewrite_rules();
+	// Seed default product categories.
+	$defaults = array( 'Jajanan', 'Makanan', 'Minuman', 'Oleh-oleh', 'Non-Makanan', 'Lainnya' );
+	foreach ( $defaults as $term_name ) {
+		if ( ! term_exists( $term_name, 'tc_product_cat' ) ) {
+			wp_insert_term( $term_name, 'tc_product_cat' );
+		}
+	}
+
+	flush_rewrite_rules();
 } );
 
 /**
