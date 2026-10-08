@@ -3,7 +3,7 @@
  * Plugin Name:       Titip Cirebon Core
  * Plugin URI:        https://titipcirebon.com
  * Description:       Core business logic for Titip Cirebon — product catalog, weekly offers, order management, and dynamic shortcodes.
- * Version:           1.2.0
+ * Version:           1.3.0
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            Titip Cirebon
@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'TC_CORE_VERSION', '1.2.0' );
+define( 'TC_CORE_VERSION', '1.3.0' );
 define( 'TC_CORE_PATH', plugin_dir_path( __FILE__ ) );
 define( 'TC_CORE_URL', plugin_dir_url( __FILE__ ) );
 
@@ -26,6 +26,7 @@ require_once TC_CORE_PATH . 'includes/class-tc-weekly-offer.php';
 require_once TC_CORE_PATH . 'includes/class-tc-shortcode-catalog.php';
 require_once TC_CORE_PATH . 'includes/class-tc-order.php';
 require_once TC_CORE_PATH . 'includes/class-tc-shortcode-tracking.php';
+require_once TC_CORE_PATH . 'includes/class-tc-admin-dashboard.php';
 
 /**
  * Bootstrap all plugin components.
@@ -36,6 +37,7 @@ add_action( 'plugins_loaded', function () {
 	TC_Shortcode_Catalog::get_instance();
 	TC_Order::get_instance();
 	TC_Shortcode_Tracking::get_instance();
+	TC_Admin_Dashboard::get_instance();
 } );
 
 /**
