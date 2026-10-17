@@ -19,3 +19,14 @@ wordpress/wp-content/themes/twenty*/
 
 *.log
 .DS_Store
+
+# Production secrets (jangan pernah di-commit!)
+.env.prod
+
+# Backup archives — uploads (DB dumps sudah di-ignore via backups/*.sql)
+backups/*.tar.gz
+
+# SSL certificates dari panel hosting
+docker/nginx/certs/*.crt
+docker/nginx/certs/*.key
+docker/nginx/certs/*.pem

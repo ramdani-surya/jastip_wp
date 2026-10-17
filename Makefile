@@ -3,7 +3,7 @@ SHELL := /bin/bash
 -include .env
 export
 
-.PHONY: up down restart ps logs shell db-shell wp-install wp-upgrade wp-verify-core design-system design-system-verify site-components site-components-verify homepage homepage-verify db-backup db-restore
+.PHONY: up down restart ps logs shell db-shell wp-install wp-upgrade wp-verify-core design-system design-system-verify site-components site-components-verify homepage homepage-verify db-backup db-restore prod-up prod-down prod-logs backup restore
 
 up:
 	docker compose up -d --build
@@ -83,3 +83,28 @@ db-restore:
 	test "$$confirmation" = "$$database" || { echo "Restore cancelled: confirmation did not match '$$database'." >&2; exit 1; }; \
 	docker compose exec -T db sh -c 'MYSQL_PWD="$$MYSQL_PASSWORD" exec mysql --user="$$MYSQL_USER" "$$MYSQL_DATABASE"' < "$(FILE)"; \
 	echo "Database restored from $(FILE) into $$database."
+
+# =============================================================================
+# Production Commands
+# =============================================================================
+# Gunakan perintah ini di server production dengan file .env.prod yang sudah
+# dikonfigurasi. Pastikan docker/nginx/certs/ sudah berisi sertifikat SSL.
+
+prod-up:
+	docker compose -f compose.yaml -f docker-compose.prod.yml --env-file .env.prod up -d --build
+
+prod-down:
+	docker compose -f compose.yaml -f docker-compose.prod.yml --env-file .env.prod down
+
+prod-logs:
+	docker compose -f compose.yaml -f docker-compose.prod.yml --env-file .env.prod logs -f --tail=200
+
+# Backup database + uploads ke folder backups/
+backup:
+	@bash scripts/backup.sh
+
+# Restore database dan/atau uploads dari file backup.
+# Contoh: make restore ARGS="--db backups/db-2026-10-17-020000.sql"
+restore:
+	@bash scripts/restore.sh $(ARGS)
+

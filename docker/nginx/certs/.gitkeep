@@ -1,0 +1,8 @@
+# Placeholder — Folder ini menyimpan sertifikat SSL untuk production.
+# Jangan commit file sertifikat ke Git!
+#
+# Salin file dari panel hosting Anda ke sini:
+#   docker/nginx/certs/fullchain.crt   (sertifikat + chain/intermediate)
+#   docker/nginx/certs/privkey.key     (private key)
+#
+# File ini (.gitkeep) ada hanya agar folder terlacak oleh Git.
