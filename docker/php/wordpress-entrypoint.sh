@@ -3,8 +3,7 @@ set -Eeuo pipefail
 
 readonly source_dir=/usr/src/wordpress
 readonly target_dir=/var/www/html
-readonly target_version=7.0.3
-readonly root_manifest=/usr/local/share/wordpress-root-files.txt
+readonly target_version=7.1.4
 
 read_core_version() {
     local version_file="$1/wp-includes/version.php"
@@ -28,9 +27,12 @@ if [[ "${1:-}" == php-fpm* ]]; then
     if [[ "$current_version" != "$target_version" && ( -n "$current_version" || -f "$target_dir/wp-config.php" ) ]]; then
         echo "Updating persistent WordPress core from ${current_version:-an incomplete copy} to $target_version."
 
-        while IFS= read -r root_file; do
-            rm --force "$target_dir/$root_file"
-        done < "$root_manifest"
+        # Hapus file core lama di root (kecuali file konfigurasi yang harus dipertahankan)
+        find "$target_dir" -maxdepth 1 -type f \
+            ! -name wp-config.php \
+            ! -name wp-config-docker.php \
+            ! -name .htaccess \
+            -delete
 
         rm --recursive --force "$target_dir/wp-admin" "$target_dir/wp-includes"
 

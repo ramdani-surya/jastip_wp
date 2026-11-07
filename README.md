@@ -6,14 +6,14 @@ Sprint 0 menyiapkan environment Docker. Sprint 1B menambahkan fondasi visual Ele
 
 ## Stack
 
-- WordPress 7.0.3, PHP 8.4 FPM
+- WordPress 7.1.4, PHP 8.4 FPM
 - MySQL 8.0
 - Nginx 1.30.4 Alpine
 - Elementor 4.2.2 dan Elementor Pro 4.0.4
 - Hello Elementor 3.4.9
 - Docker Compose
 
-Official Docker tag `wordpress:7.0.3-php8.4-fpm` belum tersedia saat Sprint 0.1 dikerjakan. Project karena itu membangun image `titip-cirebon-wordpress:7.0.3-php8.4-fpm` secara reproducible dari baseline `wordpress:7.0.2-php8.4-fpm` yang dipin sampai image digest dan tarball resmi WordPress 7.0.3. URL versi, SHA-1 resmi, dan SHA-256 tarball dipin di Docker build; versi embedded juga diverifikasi sebelum image selesai dibangun.
+Image Docker `titip-cirebon-wordpress:7.1.4-php8.4-fpm` dibangun dari tag resmi `wordpress:7.1.4-php8.4-fpm` dengan entrypoint kustom yang menyinkronkan file core WordPress ke volume persisten tanpa menimpa `wp-content` dan `wp-config.php`.
 
 Base image tersebut tetap menyediakan PHP 8.4 dan seluruh PHP extension yang dibutuhkan Sprint 0, termasuk `mbstring`, sehingga stack PHP tidak berubah.
 

@@ -30,11 +30,7 @@ services:
     build:
       context: .
       dockerfile: docker/php/Dockerfile
-      args:
-        WORDPRESS_VERSION: "7.0.3"
-        WORDPRESS_SHA1: 344b74d7cbf13c55ba0f12cad207c06cfee4368a
-        WORDPRESS_SHA256: 38e4c7d79596d58f60fa5496a235471407c44dc37a6f9c4d31d46070985e8bc4
-    image: ${PROJECT_NAME:-titip-cirebon}-wordpress:7.0.3-php8.4-fpm
+    image: ${PROJECT_NAME:-titip-cirebon}-wordpress:7.1.4-php8.4-fpm
     restart: unless-stopped
     environment:
       TZ: Asia/Jakarta

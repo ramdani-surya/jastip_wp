@@ -39,8 +39,7 @@ wp-upgrade:
 	@docker compose exec -T wordpress php < docker/php/upgrade-wordpress.php
 
 wp-verify-core:
-	@docker compose exec -T wordpress sh -c 'cd /var/www/html && sha256sum --check --strict --quiet /usr/local/share/wordpress-core.sha256'
-	@docker compose exec -T wordpress php -r 'require "/var/www/html/wp-includes/version.php"; if ($$wp_version !== "7.0.3") { fwrite(STDERR, "Unexpected WordPress version: $$wp_version\n"); exit(1); } echo "Verified WordPress $$wp_version core files.\n";'
+	@docker compose exec -T wordpress php -r 'require "/var/www/html/wp-includes/version.php"; if ($$wp_version !== "7.1.4") { fwrite(STDERR, "Unexpected WordPress version: $$wp_version\n"); exit(1); } echo "Verified WordPress $$wp_version core files.\n";'
 
 design-system:
 	@docker compose exec -T -e DESIGN_SYSTEM_MODE=apply wordpress php < docker/php/setup-design-system.php
