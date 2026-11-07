@@ -142,7 +142,7 @@ function tc_home_preflight(): void
     global $wpdb, $wp_version;
 
     tc_home_assert($wp_version === '7.1.4', "WordPress {$wp_version} found; expected 7.1.4.");
-    tc_home_assert(PHP_VERSION === '8.4.24', 'PHP 8.4.24 is required.');
+    tc_home_assert(PHP_VERSION === '8.4.27', 'PHP 8.4.27 is required.');
     tc_home_assert($wpdb->db_version() === '8.0.46', 'MySQL 8.0.46 is required.');
     tc_home_assert(is_plugin_active('elementor/elementor.php'), 'Elementor Free is not active.');
     tc_home_assert(is_plugin_active('elementor-pro/elementor-pro.php'), 'Elementor Pro is not active.');
