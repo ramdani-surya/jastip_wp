@@ -543,14 +543,25 @@ function tc_home_elements(int $heroImageId, array $productImageIds, array $compo
         tc_home_step('order-step-1', '01', 'Pilih Produk', 'Lihat produk yang tersedia pada PO minggu ini.'),
         tc_home_step('order-step-2', '02', 'Kirim Pesanan', 'Pesan melalui WhatsApp dan informasikan produk yang kamu inginkan.'),
         tc_home_step('order-step-3', '03', 'Kami Belikan di Cirebon', 'Pesanan diproses dan dibelikan langsung di Cirebon.'),
-        tc_home_step('order-step-4', '04', 'Sabtu Dikirim', 'Pesanan dibawa ke Sumedang untuk diantar. Pembayaran minimal DP 50% dari total pesanan via transfer bank. Sisa pembayaran dilunasi saat pesanan siap dikirim.'),
+        tc_home_step('order-step-4', '04', 'Sabtu Dikirim', 'Pesanan dibawa ke Sumedang untuk diantar.'),
     ];
     $order = tc_home_container('order-section', 'tc-home-order tc-section', [
         tc_home_container('order-inner', 'tc-shell-container', [
             tc_home_section_heading('order', 'Cara Order', 'Empat langkah sederhana dari memilih produk sampai pesanan diterima.'),
             tc_home_container('order-grid', 'tc-home-order-grid', $orderSteps),
+            tc_home_widget('order-dp', 'html', ['html' => '<p class="tc-home-order-note tc-home-shipping-note"><strong>Pembayaran minimal DP 50% dari total pesanan via QRIS/E-Wallet/transfer bank. Sisa pembayaran dilunasi saat pesanan siap dikirim.</strong></p>']),
         ]),
     ], ['_element_id' => 'cara-order']);
+
+    $shipping = tc_home_container('shipping-section', 'tc-home-shipping tc-section', [
+        tc_home_container('shipping-inner', 'tc-shell-container', [
+            tc_home_section_heading('shipping', 'Area Pengiriman', 'Informasi pengiriman awal untuk wilayah Sumedang.'),
+            tc_home_container('shipping-grid', 'tc-home-shipping-grid', [
+                tc_home_info_card('shipping-free', 'Gratis Ongkir', 'Cimalaka dan Sumedang Kota', 'Gratis ongkir untuk Cimalaka serta Sumedang Kota / pusat kota.'),
+                tc_home_info_card('shipping-other', 'Area Lainnya', 'Ongkir sesuai jarak', 'Untuk area lainnya, ongkir disesuaikan dengan jarak.'),
+            ]),
+        ]),
+    ]);
 
     $compactCta = tc_home_container('compact-cta-section', 'tc-home-cta tc-home-cta--compact tc-section--compact', [
         tc_home_container('compact-cta-inner', 'tc-shell-container', [
@@ -566,17 +577,6 @@ function tc_home_elements(int $heroImageId, array $productImageIds, array $compo
                 tc_home_info_card('schedule-friday', 'Jumat', 'Proses dan persiapan pesanan', 'Pesanan direkap dan disiapkan di Cirebon.'),
                 tc_home_info_card('schedule-saturday', 'Sabtu', 'Pengiriman ke Sumedang', 'Pesanan dibawa untuk diantar ke alamat kamu.'),
             ]),
-        ]),
-    ]);
-
-    $shipping = tc_home_container('shipping-section', 'tc-home-shipping tc-section', [
-        tc_home_container('shipping-inner', 'tc-shell-container', [
-            tc_home_section_heading('shipping', 'Area Pengiriman', 'Informasi pengiriman awal untuk wilayah Sumedang.'),
-            tc_home_container('shipping-grid', 'tc-home-shipping-grid', [
-                tc_home_info_card('shipping-free', 'Gratis Ongkir', 'Cimalaka dan Sumedang Kota', 'Gratis ongkir untuk Cimalaka serta Sumedang Kota / pusat kota.'),
-                tc_home_info_card('shipping-other', 'Area Lainnya', 'Ongkir sesuai jarak', 'Untuk area lainnya, ongkir disesuaikan dengan jarak.'),
-            ]),
-            tc_home_widget('shipping-dp', 'html', ['html' => '<p class="tc-home-shipping-note"><strong>Pembayaran minimal DP 50% dari total pesanan via transfer bank. Sisa pembayaran dilunasi saat pesanan siap dikirim.</strong></p>']),
         ]),
     ]);
 
@@ -601,9 +601,9 @@ function tc_home_elements(int $heroImageId, array $productImageIds, array $compo
         $productSection,
         $trust,
         $order,
+        $shipping,
         $compactCta,
         $schedule,
-        $shipping,
         $tracking,
         $finalCta,
     ])];
@@ -844,7 +844,8 @@ function tc_home_css(): string
     gap: 20px;
 }
 
-.elementor-kit-11 .tc-home-shipping-note {
+.elementor-kit-11 .tc-home-shipping-note,
+.elementor-kit-11 .tc-home-order-note {
     margin: 24px 0 0;
     padding: 16px 20px;
     color: var(--tc-primary-dark);
@@ -1209,13 +1210,20 @@ function tc_home_verify(): void
         'Jadwal PO',
         'Area Pengiriman',
         'Cimalaka dan Sumedang Kota',
-        'Pembayaran minimal DP 50% dari total pesanan via transfer bank.',
+        'Pembayaran minimal DP 50% dari total pesanan via QRIS/E-Wallet/transfer bank.',
         'Sudah pesan?',
         'Nanti kamu bisa mengecek perkembangan pesanan menggunakan Kode Pesanan.',
     ] as $copy) {
         tc_home_assert(str_contains($normalized, $copy), "Homepage copy is missing: {$copy}");
     }
     tc_home_assert(str_contains($normalized, '6285155092633'), 'Homepage must contain WhatsApp CTA target URL.');
+
+    $orderPos = strpos($normalized, 'tc-home-order');
+    $shippingPos = strpos($normalized, 'tc-home-shipping');
+    $compactCtaPos = strpos($normalized, 'tc-home-cta--compact');
+    tc_home_assert($orderPos !== false && $shippingPos !== false && $shippingPos > $orderPos, 'Area Pengiriman must appear after Cara Order.');
+    tc_home_assert($compactCtaPos !== false && $compactCtaPos > $shippingPos, 'Compact CTA must appear after Area Pengiriman.');
+
     foreach (['slider', 'video', 'lottie', 'testimonial', '<script', '@keyframes', 'parallax'] as $forbidden) {
         tc_home_assert(!str_contains(strtolower($normalized), strtolower($forbidden)), "Forbidden Homepage behavior/content found: {$forbidden}");
     }
