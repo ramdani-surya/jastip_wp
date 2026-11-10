@@ -49,6 +49,12 @@ Tambahkan Secrets berikut pada masing-masing Environment:
 | `SSH_PRIVATE_KEY` | Ya | Private SSH Key (format OpenSSH / PEM) | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
 | `SSH_PORT` | Opsional | Port SSH server (default: `22`) | `22` |
 | `DEPLOY_PATH` | Opsional | Path folder project di server | `/opt/titip-cirebon` |
+| `ENV_FILE` | **Disarankan** | Seluruh konfigurasi `.env` (diinjeksi ke RAM saat deploy, **0 byte file di disk**) | Salin seluruh teks dari `.env.prod` |
+
+> [!TIP]
+> **Keamanan Maksimal (In-Memory Injection / Zero Disk Footprint)**:
+> Dengan mengisi Secret `ENV_FILE`, Anda **tidak perlu lagi membuat file `.env` atau `.env.prod` di disk VPS**.
+> Pipeline deploy akan otomatis memuat variabel-variabel tersebut langsung ke memori RAM sesi Docker Compose melalui koneksi terenkripsi. Tidak ada file kredensial plaintext yang tersimpan di folder project server Anda!
 
 Tambahkan juga Configuration Variable:
 

@@ -57,6 +57,20 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ needs.determine-env.outputs.target_env }}
     steps:
+      - name: Prepare Environment Secret
+        id: prep-env
+        env:
+          RAW_ENV: ${{ secrets.ENV_FILE || '' }}
+        run: |
+          if [ -n "$RAW_ENV" ]; then
+            B64=$(printf "%s" "$RAW_ENV" | base64 -w 0)
+            echo "env_b64=$B64" >> $GITHUB_OUTPUT
+            echo "Environment secret detected and encoded."
+          else
+            echo "env_b64=" >> $GITHUB_OUTPUT
+            echo "No ENV_FILE secret provided; falling back to server local environment."
+          fi
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
@@ -64,12 +78,13 @@ jobs:
           TARGET_BRANCH: ${{ needs.determine-env.outputs.target_branch }}
           SKIP_BACKUP: ${{ github.event.inputs.skip_backup || 'false' }}
           DOMAIN: ${{ vars.WORDPRESS_DOMAIN || '' }}
+          ENV_B64: ${{ steps.prep-env.outputs.env_b64 }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          envs: TARGET_ENV,TARGET_BRANCH,SKIP_BACKUP,DOMAIN
+          envs: TARGET_ENV,TARGET_BRANCH,SKIP_BACKUP,DOMAIN,ENV_B64
           script_stop: true
           script: |
             set -e
@@ -85,24 +100,46 @@ jobs:
             fi
             cd "$DEPLOY_PATH"
 
-            # 2. Snapshot Backup Otomatis sebelum update (Zero-Loss Guarantee)
+            # 2. Injeksi Environment dari GitHub Secret ke memori RAM (0 byte di disk)
+            if [ -n "$ENV_B64" ]; then
+              echo "[deploy] Memuat variabel environment dari GitHub Secrets ke memori RAM..."
+              DECODED_ENV=$(printf "%s" "$ENV_B64" | base64 -d)
+              while IFS= read -r line || [ -n "$line" ]; do
+                [[ "$line" =~ ^[[:space:]]*# ]] && continue
+                [[ -z "${line// }" ]] && continue
+                if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+                  k="${BASH_REMATCH[1]}"
+                  v="${BASH_REMATCH[2]}"
+                  if [[ "$v" =~ ^\"(.*)\"$ ]]; then v="${BASH_REMATCH[1]}"; fi
+                  if [[ "$v" =~ ^\'(.*)\'$ ]]; then v="${BASH_REMATCH[1]}"; fi
+                  export "$k=$v"
+                fi
+              done <<< "$DECODED_ENV"
+              echo "[deploy] Variabel environment berhasil dimuat ke RAM (0 byte di disk)."
+            fi
+
+            # 3. Snapshot Backup Otomatis sebelum update (Zero-Loss Guarantee)
             if [ "$SKIP_BACKUP" != "true" ] && [ -f "./scripts/backup.sh" ]; then
               echo "[deploy] Membuat snapshot database pra-deploy..."
               ./scripts/backup.sh || echo "[deploy] Warning: Backup script exited with code $?"
             fi
 
-            # 3. Sinkronisasi Git Repository
+            # 4. Sinkronisasi Git Repository
             echo "[deploy] Menarik commit terbaru dari branch $TARGET_BRANCH..."
             git fetch origin
             git checkout "$TARGET_BRANCH"
             git pull origin "$TARGET_BRANCH"
 
-            # 4. Build dan Reload Docker Containers
+            # 5. Build dan Reload Docker Containers
             echo "[deploy] Mereload Docker containers..."
             if [ "$TARGET_ENV" = "production" ]; then
               make prod-up
             else
-              docker compose up -d --build
+              if [ -f .env ]; then
+                docker compose --env-file .env up -d --build
+              else
+                docker compose up -d --build
+              fi
             fi
 
             # 5. Post-Deploy: Flush Rewrite Rules, Reset OPcache & Elementor CSS Cache

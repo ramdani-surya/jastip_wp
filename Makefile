@@ -27,7 +27,9 @@ db-shell:
 	docker compose exec db sh -c 'MYSQL_PWD="$$MYSQL_PASSWORD" exec mysql --user="$$MYSQL_USER" "$$MYSQL_DATABASE"'
 
 wp-install:
-	@test -f .env || { echo "Missing .env. Run: cp .env.example .env" >&2; exit 1; }
+	@if [ ! -f .env ] && [ ! -f .env.prod ] && [ -z "$$WP_ADMIN_USER" ]; then \
+		echo "Missing environment configuration. Run: cp .env.example .env or export variables." >&2; exit 1; \
+	fi
 	@docker compose exec -T \
 		-e WP_SITE_TITLE="$(WP_SITE_TITLE)" \
 		-e WP_ADMIN_USER="$(WP_ADMIN_USER)" \
@@ -91,13 +93,25 @@ db-restore:
 # dikonfigurasi. Pastikan docker/nginx/certs/ sudah berisi sertifikat SSL.
 
 prod-up:
-	docker compose -f compose.yaml -f docker-compose.prod.yml --env-file .env.prod up -d --build
+	@if [ -f .env.prod ]; then \
+		docker compose -f compose.yaml -f docker-compose.prod.yml --env-file .env.prod up -d --build; \
+	else \
+		docker compose -f compose.yaml -f docker-compose.prod.yml up -d --build; \
+	fi
 
 prod-down:
-	docker compose -f compose.yaml -f docker-compose.prod.yml --env-file .env.prod down
+	@if [ -f .env.prod ]; then \
+		docker compose -f compose.yaml -f docker-compose.prod.yml --env-file .env.prod down; \
+	else \
+		docker compose -f compose.yaml -f docker-compose.prod.yml down; \
+	fi
 
 prod-logs:
-	docker compose -f compose.yaml -f docker-compose.prod.yml --env-file .env.prod logs -f --tail=200
+	@if [ -f .env.prod ]; then \
+		docker compose -f compose.yaml -f docker-compose.prod.yml --env-file .env.prod logs -f --tail=200; \
+	else \
+		docker compose -f compose.yaml -f docker-compose.prod.yml logs -f --tail=200; \
+	fi
 
 # Backup database + uploads ke folder backups/
 backup:
