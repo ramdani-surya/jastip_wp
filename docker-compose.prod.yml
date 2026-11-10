@@ -11,7 +11,7 @@ services:
     environment:
       WORDPRESS_DEBUG: "false"
       WP_ENVIRONMENT_TYPE: production
-      WORDPRESS_URL: https://${WORDPRESS_DOMAIN:?Set WORDPRESS_DOMAIN in .env.prod}
+      WORDPRESS_URL: ${WORDPRESS_PROTOCOL:-https}://${WORDPRESS_DOMAIN:?Set WORDPRESS_DOMAIN in .env.prod}
       WORDPRESS_CONFIG_EXTRA: |
         define('WP_ENVIRONMENT_TYPE', 'production');
         define('WP_DEBUG', false);

@@ -54,7 +54,11 @@ Tambahkan juga Configuration Variable:
 
 | Variable Name | Deskripsi | Contoh |
 |---|---|---|
-| `WORDPRESS_DOMAIN` | Domain untuk verifikasi healthcheck HTTP 200 | `titipcirebon.com` atau `staging.titipcirebon.com` |
+| `WORDPRESS_DOMAIN` | Domain atau IP untuk healthcheck (otomatis cek HTTPS & fallback ke HTTP) | `titipcirebon.com`, `staging.titipcirebon.com`, atau `103.123.45.67` |
+
+> [!TIP]
+> **Toleransi Protokol (HTTPS & HTTP Fallback)**:
+> Automated healthcheck akan mencoba akses via `https://` terlebih dahulu (mengabaikan self-signed cert). Jika port 443 belum aktif atau SSL belum dipasang di VPS, script secara cerdas akan otomatis fallback mengecek via `http://`. Jika VPS belum memiliki domain atau sertifikat SSL, Anda juga dapat menyetel `WORDPRESS_PROTOCOL=http` di file `.env.prod` server Anda.
 
 ---
 

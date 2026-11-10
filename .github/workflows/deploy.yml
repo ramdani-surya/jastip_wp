@@ -117,24 +117,42 @@ jobs:
               echo "[deploy] Permalinks and Elementor cache refreshed successfully.\n";
             ' || echo "[deploy] Warning: Cache flush encountered an issue."
 
-            # 6. Automated Health Check
+            # 6. Automated Health Check (Support HTTPS & HTTP Fallback)
             if [ -n "$DOMAIN" ]; then
-              echo "[deploy] Menjalankan automated health check ke https://$DOMAIN..."
+              CLEAN_DOMAIN=$(echo "$DOMAIN" | sed -E 's|^https?://||' | sed -E 's|/.*$||')
+              echo "[deploy] Menjalankan automated health check ke $CLEAN_DOMAIN..."
               HEALTHY=false
+              SUCCESS_STATUS=""
+              SUCCESS_PROTO=""
+
               for i in {1..6}; do
-                STATUS=$(curl -k -s -o /dev/null -w "%{http_code}" "https://$DOMAIN" || true)
-                echo "[deploy] Check #$i: HTTP status $STATUS"
-                if [ "$STATUS" = "200" ] || [ "$STATUS" = "301" ] || [ "$STATUS" = "302" ]; then
+                # 1. Coba HTTPS terlebih dahulu (dengan toleransi sertifikat self-signed -k)
+                STATUS=$(curl -k -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "https://$CLEAN_DOMAIN" || true)
+                USED_PROTO="https"
+
+                # 2. Jika HTTPS tidak merespons (status 000 / connection refused / SSL error), fallback ke HTTP
+                if [ "$STATUS" = "000" ] || [ -z "$STATUS" ]; then
+                  FALLBACK_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 10 "http://$CLEAN_DOMAIN" || true)
+                  if [ "$FALLBACK_STATUS" != "000" ] && [ -n "$FALLBACK_STATUS" ]; then
+                    STATUS="$FALLBACK_STATUS"
+                    USED_PROTO="http"
+                  fi
+                fi
+
+                echo "[deploy] Check #$i via $USED_PROTO: HTTP status $STATUS"
+                if [ "$STATUS" = "200" ] || [ "$STATUS" = "301" ] || [ "$STATUS" = "302" ] || [ "$STATUS" = "307" ] || [ "$STATUS" = "308" ]; then
                   HEALTHY=true
+                  SUCCESS_STATUS="$STATUS"
+                  SUCCESS_PROTO="$USED_PROTO"
                   break
                 fi
                 sleep 5
               done
 
               if [ "$HEALTHY" = "true" ]; then
-                echo "✅ Health check BERHASIL: Website merespons status $STATUS"
+                echo "✅ Health check BERHASIL: Website merespons status $SUCCESS_STATUS via $SUCCESS_PROTO"
               else
-                echo "❌ Health check GAGAL: Website tidak merespons HTTP 200/301/302."
+                echo "❌ Health check GAGAL: Website tidak merespons status 200/301/302 pada https://$CLEAN_DOMAIN maupun http://$CLEAN_DOMAIN."
                 exit 1
               fi
             fi
