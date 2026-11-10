@@ -376,7 +376,7 @@ class TC_Order {
 			</tr>
 			<tr>
 				<th scope="row">
-					<label for="tc_customer_wa">No. WhatsApp</label>
+					<label for="tc_customer_wa">No. WhatsApp <span style="color:#d63638;" aria-hidden="true">*</span></label>
 				</th>
 				<td>
 					<input
@@ -386,8 +386,9 @@ class TC_Order {
 						value="<?php echo esc_attr( $customer_wa ); ?>"
 						class="regular-text"
 						placeholder="Contoh: 08123456789"
+						required
 					>
-					<p class="description">Nomor WhatsApp customer tanpa tanda baca.</p>
+					<p class="description">Wajib diisi. Digunakan pelanggan untuk verifikasi saat melacak pesanan. Tulis tanpa tanda baca (spasi, strip, dsb).</p>
 				</td>
 			</tr>
 			<tr>
@@ -524,6 +525,11 @@ class TC_Order {
 		foreach ( $text_fields as $key => $sanitize_callback ) {
 			if ( isset( $_POST[ $key ] ) ) {
 				$value = $sanitize_callback( wp_unslash( $_POST[ $key ] ) );
+				// Validasi server-side: No. WhatsApp wajib diisi.
+				// Jika field WA kosong, jangan timpa nilai yang sudah tersimpan.
+				if ( '_tc_customer_wa' === $key && '' === $value ) {
+					continue;
+				}
 				update_post_meta( $post_id, $key, $value );
 			}
 		}

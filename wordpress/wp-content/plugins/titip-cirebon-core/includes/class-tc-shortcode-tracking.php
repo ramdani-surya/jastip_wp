@@ -91,8 +91,13 @@ class TC_Shortcode_Tracking {
 			? strtoupper( trim( sanitize_text_field( wp_unslash( $_GET['kode_pesanan'] ) ) ) )
 			: '';
 
+		$no_wa = isset( $_GET['no_wa'] )
+			? sanitize_text_field( wp_unslash( $_GET['no_wa'] ) )
+			: '';
+
 		$order_post = null;
-		$searched   = ! empty( $kode_pesanan );
+		$searched   = ! empty( $kode_pesanan ) && ! empty( $no_wa );
+		$is_partial = ( ! empty( $kode_pesanan ) && empty( $no_wa ) ) || ( empty( $kode_pesanan ) && ! empty( $no_wa ) );
 
 		if ( $searched ) {
 			global $wpdb;
@@ -115,7 +120,11 @@ class TC_Shortcode_Tracking {
 			);
 
 			if ( $post_id ) {
-				$order_post = get_post( (int) $post_id );
+				// Verifikasi kepemilikan via No. WhatsApp — cegah IDOR.
+				$stored_wa = get_post_meta( (int) $post_id, '_tc_customer_wa', true );
+				if ( $this->normalize_phone_number( $no_wa ) === $this->normalize_phone_number( (string) $stored_wa ) ) {
+					$order_post = get_post( (int) $post_id );
+				}
 			}
 		}
 
@@ -128,20 +137,33 @@ class TC_Shortcode_Tracking {
 			<div class="tc-tracking-search-box">
 				<h2 class="tc-tracking-title">Lacak Pesanan Anda</h2>
 				<p class="tc-tracking-subtitle">
-					Masukkan Kode Pesanan yang Anda terima dari WhatsApp untuk melihat status progres pesanan.
+					Masukkan Kode Pesanan yang Anda terima dari admin dan Nomor WhatsApp terdaftar untuk melihat status pesanan Anda.
 				</p>
 
 				<form method="get" action="" class="tc-tracking-form">
 					<div class="tc-tracking-input-group">
-						<input
-							type="text"
-							name="kode_pesanan"
-							value="<?php echo esc_attr( $kode_pesanan ); ?>"
-							placeholder="Contoh: TC-2026-0001"
-							class="tc-tracking-input"
-							required
-							autocomplete="off"
-						>
+						<div class="tc-tracking-field">
+							<input
+								type="text"
+								name="kode_pesanan"
+								value="<?php echo esc_attr( $kode_pesanan ); ?>"
+								placeholder="Kode Pesanan (TC-2026-0001)"
+								class="tc-tracking-input"
+								required
+								autocomplete="off"
+							>
+						</div>
+						<div class="tc-tracking-field">
+							<input
+								type="text"
+								name="no_wa"
+								value="<?php echo esc_attr( $no_wa ); ?>"
+								placeholder="No. WhatsApp (08123456789)"
+								class="tc-tracking-input tc-tracking-input--phone"
+								required
+								autocomplete="off"
+							>
+						</div>
 						<button type="submit" class="tc-tracking-btn">
 							<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 								<circle cx="11" cy="11" r="8"></circle>
@@ -162,10 +184,18 @@ class TC_Shortcode_Tracking {
 						<div class="tc-tracking-alert__icon">⚠️</div>
 						<div class="tc-tracking-alert__body">
 							<strong>Pesanan Tidak Ditemukan</strong>
-							<p>Pesanan dengan kode <code><?php echo esc_html( $kode_pesanan ); ?></code> tidak ditemukan. Pastikan kode sudah benar atau hubungi admin kami via WhatsApp jika membutuhkan bantuan.</p>
+							<p>Pesanan tidak ditemukan. Pastikan kombinasi Kode Pesanan dan Nomor WhatsApp yang dimasukkan sudah sesuai. Hubungi admin kami via WhatsApp jika membutuhkan bantuan.</p>
 						</div>
 					</div>
 				<?php endif; ?>
+			<?php elseif ( $is_partial ) : ?>
+				<div class="tc-tracking-alert tc-tracking-alert--warning" role="alert">
+					<div class="tc-tracking-alert__icon">ℹ️</div>
+					<div class="tc-tracking-alert__body">
+						<strong>Verifikasi Diperlukan</strong>
+						<p>Mohon lengkapi kedua kolom (Kode Pesanan dan Nomor WhatsApp) untuk melacak pesanan Anda demi keamanan data.</p>
+					</div>
+				</div>
 			<?php endif; ?>
 		</div>
 		<?php
@@ -347,12 +377,17 @@ class TC_Shortcode_Tracking {
 			}
 			.tc-tracking-input-group {
 				display: flex;
-				gap: 10px;
-				max-width: 480px;
+				gap: 12px;
+				max-width: 660px;
 				margin: 0 auto;
 			}
-			.tc-tracking-input {
+			.tc-tracking-field {
 				flex: 1;
+				min-width: 0;
+			}
+			.tc-tracking-input {
+				width: 100%;
+				box-sizing: border-box;
 				padding: 12px 16px;
 				font-size: 15px;
 				border: 2px solid #cbd5e1;
@@ -361,6 +396,10 @@ class TC_Shortcode_Tracking {
 				transition: border-color 0.2s, box-shadow 0.2s;
 				text-transform: uppercase;
 				letter-spacing: 0.5px;
+			}
+			.tc-tracking-input--phone {
+				text-transform: none;
+				letter-spacing: normal;
 			}
 			.tc-tracking-input:focus {
 				border-color: #2271b1;
@@ -402,6 +441,11 @@ class TC_Shortcode_Tracking {
 				background: #fff5f5;
 				border: 1px solid #fed7d7;
 				color: #c53030;
+			}
+			.tc-tracking-alert--warning {
+				background: #fffbeb;
+				border: 1px solid #fef3c7;
+				color: #92400e;
 			}
 			.tc-tracking-alert__icon {
 				font-size: 22px;
@@ -604,9 +648,12 @@ class TC_Shortcode_Tracking {
 			.tc-tracking-wa-link:hover {
 				color: #007031;
 			}
-			@media (max-width: 600px) {
+			@media (max-width: 640px) {
 				.tc-tracking-input-group {
 					flex-direction: column;
+				}
+				.tc-tracking-btn {
+					width: 100%;
 				}
 				.tc-tracking-card-header {
 					flex-direction: column;
@@ -615,5 +662,24 @@ class TC_Shortcode_Tracking {
 			}
 		</style>
 		<?php
+	}
+
+	/**
+	 * Normalisasi nomor WhatsApp pelanggan untuk pencocokan yang andal.
+	 *
+	 * Menghapus semua karakter non-digit, dan menyelaraskan awalan internasional (+62/62)
+	 * atau awalan tanpa nol (8...) menjadi format lokal Indonesia standar berawalan '0'.
+	 *
+	 * @param string $phone Nomor telepon mentah.
+	 * @return string Nomor telepon yang telah dinormalisasi.
+	 */
+	private function normalize_phone_number( string $phone ): string {
+		$digits = preg_replace( '/\D/', '', $phone );
+		if ( str_starts_with( $digits, '62' ) ) {
+			$digits = '0' . substr( $digits, 2 );
+		} elseif ( str_starts_with( $digits, '8' ) ) {
+			$digits = '0' . $digits;
+		}
+		return (string) $digits;
 	}
 }
