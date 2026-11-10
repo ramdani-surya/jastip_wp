@@ -101,8 +101,15 @@ class TC_Shortcode_Tracking {
 					"SELECT ID FROM {$wpdb->posts}
 					 WHERE post_type = 'tc_order'
 					   AND post_status NOT IN ('auto-draft', 'trash', 'inherit')
-					   AND post_title = %s
+					   AND (
+						   post_title = %s
+						   OR ID IN (
+							   SELECT post_id FROM {$wpdb->postmeta}
+							   WHERE meta_key = '_tc_order_code' AND meta_value = %s
+						   )
+					   )
 					 LIMIT 1",
+					$kode_pesanan,
 					$kode_pesanan
 				)
 			);
@@ -155,7 +162,7 @@ class TC_Shortcode_Tracking {
 						<div class="tc-tracking-alert__icon">⚠️</div>
 						<div class="tc-tracking-alert__body">
 							<strong>Pesanan Tidak Ditemukan</strong>
-							<p>Pesanan dengan kode <code><?php echo esc_html( $kode_pesanan ); ?></code> tidak ditemukan. Pastikan format kode sudah benar atau hubungi admin kami via WhatsApp jika membutuhkan bantuan.</p>
+							<p>Pesanan dengan kode <code><?php echo esc_html( $kode_pesanan ); ?></code> tidak ditemukan. Pastikan kode sudah benar atau hubungi admin kami via WhatsApp jika membutuhkan bantuan.</p>
 						</div>
 					</div>
 				<?php endif; ?>
@@ -293,7 +300,7 @@ class TC_Shortcode_Tracking {
 			<!-- Bantuan / Hubungi Admin -->
 			<div class="tc-tracking-help">
 				<p>Ada kendala atau pertanyaan mengenai pesanan ini?
-					<a href="https://wa.me/628123456789?text=<?php echo rawurlencode( 'Halo Titip Cirebon, saya ingin menanyakan status pesanan saya dengan kode ' . $order_code ); ?>" target="_blank" rel="noopener noreferrer" class="tc-tracking-wa-link">
+					<a href="https://wa.me/6285155092633?text=<?php echo rawurlencode( 'Halo Titip Cirebon, saya ingin menanyakan status pesanan saya dengan kode ' . $order_code ); ?>" target="_blank" rel="noopener noreferrer" class="tc-tracking-wa-link">
 						Hubungi Admin WhatsApp
 					</a>
 				</p>
