@@ -20,6 +20,7 @@ const TC_SITE_PREVIEW_KEY = 'preview';
 const TC_SITE_PREVIEW_SLUG = 'site-components-preview';
 const TC_SITE_CSS_START = '/* TITIP CIREBON SITE COMPONENTS: START */';
 const TC_SITE_CSS_END = '/* TITIP CIREBON SITE COMPONENTS: END */';
+const TC_WHATSAPP_URL = 'https://wa.me/6285155092633?text=Halo%20Titip%20Cirebon,%20saya%20mau%20pesan%20jastip%20minggu%20ini.%20Boleh%20minta%20form%20list%20pesanannya?';
 
 function tc_site_fail(string $message): never
 {
@@ -151,13 +152,13 @@ function tc_site_heading(string $name, string $title, string $tag, string $typog
     ]);
 }
 
-function tc_site_button(string $name, string $label, string $url, string $classes = ''): array
+function tc_site_button(string $name, string $label, string $url, string $classes = '', bool $isExternal = false): array
 {
     return tc_site_widget($name, 'button', [
         'text' => $label,
         'link' => [
             'url' => $url,
-            'is_external' => '',
+            'is_external' => $isExternal ? 'on' : '',
             'nofollow' => '',
             'custom_attributes' => '',
         ],
@@ -180,7 +181,7 @@ function tc_site_preflight(): void
 
     $plugins = (array) get_option('active_plugins', []);
     sort($plugins);
-    tc_site_assert($plugins === ['elementor-pro/elementor-pro.php', 'elementor/elementor.php'], 'Only Elementor Free and Elementor Pro may be active.');
+    tc_site_assert(in_array('elementor/elementor.php', $plugins, true) && in_array('elementor-pro/elementor-pro.php', $plugins, true), 'Elementor Free and Elementor Pro must be active.');
 
     $theme = wp_get_theme();
     tc_site_assert($theme->get_stylesheet() === 'hello-elementor', 'Hello Elementor must remain active.');
@@ -741,7 +742,7 @@ function tc_site_header_elements(string $menuSlug): array
         'toggle_size' => tc_site_size(24),
         '_css_classes' => 'tc-primary-nav',
     ]);
-    $cta = tc_site_button('header-primary-cta', 'Pesan Sekarang', home_url('/#whatsapp-order'), 'tc-header-cta');
+    $cta = tc_site_button('header-primary-cta', 'Pesan Sekarang', TC_WHATSAPP_URL, 'tc-header-cta', true);
     $inner = tc_site_container('header-inner', 'tc-shell-container tc-header-inner', [$brand, $navigation, $cta], [
         'flex_direction' => 'row',
         'align_items' => 'center',
@@ -754,13 +755,13 @@ function tc_site_header_elements(string $menuSlug): array
 function tc_site_footer_elements(): array
 {
     $routes = array_map('esc_url', tc_site_routes());
-    $whatsapp = esc_url(home_url('/#whatsapp-order'));
+    $whatsapp = esc_url(TC_WHATSAPP_URL);
     $year = wp_date('Y');
     $html = <<<HTML
 <div class="tc-footer-grid">
   <section aria-labelledby="tc-footer-brand"><h2 id="tc-footer-brand" class="tc-footer-brand">Titip Cirebon</h2><p class="tc-footer-description">Titip produk dan jajanan pilihan langsung dari Cirebon untuk kamu di Sumedang.</p></section>
   <nav class="tc-footer-nav" aria-label="Footer navigation"><h2 class="tc-footer-heading">Navigasi</h2><ul><li><a href="{$routes['products']}">Produk</a></li><li><a href="{$routes['order-guide']}">Cara Order</a></li><li><a href="{$routes['tracking']}">Lacak Pesanan</a></li><li><a href="{$routes['about']}">Tentang Kami</a></li></ul></nav>
-  <section aria-labelledby="tc-footer-order"><h2 id="tc-footer-order" class="tc-footer-heading">Order</h2><p class="tc-footer-copy">Siapkan daftar produk yang kamu inginkan, lalu pesan melalui WhatsApp.</p><a class="elementor-button tc-footer-order" href="{$whatsapp}">Pesan via WhatsApp</a></section>
+  <section aria-labelledby="tc-footer-order"><h2 id="tc-footer-order" class="tc-footer-heading">Order</h2><p class="tc-footer-copy">Siapkan daftar produk yang kamu inginkan, lalu pesan melalui WhatsApp.</p><a class="elementor-button tc-footer-order" href="{$whatsapp}" target="_blank" rel="noopener noreferrer">Pesan via WhatsApp</a></section>
   <section aria-labelledby="tc-footer-schedule"><h2 id="tc-footer-schedule" class="tc-footer-heading">Jadwal</h2><p class="tc-footer-copy">Open PO Senin–Kamis<br>Pengiriman setiap Sabtu</p></section>
 </div>
 <div class="tc-footer-bottom">&copy; {$year} Titip Cirebon. Titip produk Cirebon untuk Sumedang.</div>
@@ -773,9 +774,9 @@ HTML;
 function tc_site_component_specs(): array
 {
     $routes = tc_site_routes();
-    $whatsappUrl = home_url('/#whatsapp-order');
+    $whatsappUrl = TC_WHATSAPP_URL;
     $primary = [tc_site_container('component-primary-cta', 'tc-component-template', [
-        tc_site_button('component-primary-button', 'Pesan Sekarang', $whatsappUrl),
+        tc_site_button('component-primary-button', 'Pesan Sekarang', $whatsappUrl, '', true),
     ])];
     $secondary = [tc_site_container('component-secondary-cta', 'tc-component-template', [
         tc_site_button('component-secondary-button', 'Lihat Produk', $routes['products'], 'tc-button--secondary'),
@@ -789,10 +790,10 @@ function tc_site_component_specs(): array
             'editor' => '<p>Kirim daftar produk yang kamu inginkan. Kami bantu cek dan proses pesanannya.</p>',
             '__globals__' => ['text_color' => tc_site_global_color('text'), 'typography_typography' => tc_site_global_typography('tc-body')],
         ]),
-        tc_site_button('component-whatsapp-button', 'Pesan via WhatsApp', $whatsappUrl),
+        tc_site_button('component-whatsapp-button', 'Pesan via WhatsApp', $whatsappUrl, '', true),
     ])];
 
-    $productHtml = <<<'HTML'
+    $productHtml = <<<HTML
 <article class="tc-product-card">
   <div class="tc-product-card__media" role="img" aria-label="Placeholder area foto produk dengan rasio empat banding tiga">Area foto produk 4:3<br>Foto produk akan ditambahkan kemudian</div>
   <div class="tc-product-card__content">
@@ -800,7 +801,7 @@ function tc_site_component_specs(): array
     <h3 class="tc-product-card__title">Bandung Cheesecuit</h3>
     <p class="tc-product-card__description">Jajanan populer yang bisa dipesan untuk PO minggu ini.</p>
     <strong class="tc-product-card__price">Rp xx.xxx</strong>
-    <div class="tc-product-card__footer"><span class="tc-preview-note">Harga masih placeholder</span><a class="elementor-button" href="#whatsapp-order">Pesan Produk</a></div>
+    <div class="tc-product-card__footer"><span class="tc-preview-note">Harga masih placeholder</span><a class="elementor-button" href="{$whatsappUrl}" target="_blank" rel="noopener noreferrer">Pesan Produk</a></div>
   </div>
 </article>
 HTML;
@@ -1037,7 +1038,7 @@ function tc_site_verify(): void
     tc_site_assert(
         str_contains($footerData, 'tc-site-footer')
         && str_contains($footerData, 'Open PO Senin')
-        && str_contains($footerData, '#whatsapp-order'),
+        && str_contains($footerData, '6285155092633'),
         'Footer Elementor structure is incomplete.'
     );
 

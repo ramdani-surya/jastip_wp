@@ -175,7 +175,7 @@ Reusable templates yang dikelola script:
 Primary CTA                 Pesan Sekarang
 Secondary CTA               Lihat Produk
 Utility CTA                 Lacak Pesanan
-WhatsApp CTA                Internal placeholder #whatsapp-order
+WhatsApp CTA                Tautan resmi WhatsApp (wa.me/6285155092633)
 Product Card                Placeholder image, badge, price, dan CTA
 Product Badges              Reusable availability/status variants
 Trust Cards                 Lightweight information-card grid
@@ -183,7 +183,7 @@ Section Heading             Eyebrow, heading, description, optional CTA
 Basic Content Pattern       Two-column informational pattern
 ```
 
-Primary navigation berisi Produk, Cara Order, Lacak Pesanan, dan Tentang Kami. Target masih berupa internal homepage anchors karena halaman bisnis final berada di luar Sprint 1C. WhatsApp CTA sengaja memakai `#whatsapp-order`; ganti dengan URL resmi hanya setelah nomor bisnis dikonfirmasi. Jangan memasukkan nomor, alamat, email, atau akun sosial sementara.
+Primary navigation berisi Produk, Cara Order, Lacak Pesanan, dan Tentang Kami. Target masih berupa internal homepage anchors karena halaman bisnis final berada di luar Sprint 1C. WhatsApp CTA mengarah ke tautan resmi WhatsApp dengan pre-filled message pemesanan dan membuka tab baru. Jangan memasukkan nomor, alamat, email, atau akun sosial sementara.
 
 CSS tambahan disimpan pada blok `TITIP CIREBON SITE COMPONENTS` di WordPress Additional CSS. Script hanya mengganti blok miliknya, mempertahankan CSS lain, memakai token Sprint 1B, dan tidak menggunakan `!important` atau JavaScript custom. Header mobile menggunakan native Elementor Pro Nav Menu pada breakpoint 767px dengan tombol dan link minimum 44px.
 
@@ -220,7 +220,7 @@ Navigation Header/Footer mengarah ke halaman berikut agar tidak ada broken route
 /tentang-kami/    Deskripsi faktual layanan dan jadwal
 ```
 
-CTA WhatsApp tetap memakai placeholder internal absolut `/#whatsapp-order`. Ganti destination pada source declarative setelah nomor bisnis resmi tersedia; jangan memasukkan nomor sementara. Homepage tidak menambahkan WooCommerce, CPT, checkout, payment, akun, shipping calculator, tracking backend, analytics, JavaScript custom, atau plugin baru.
+CTA WhatsApp mengarah ke tautan resmi WhatsApp (`https://wa.me/6285155092633`) dengan pre-filled message pemesanan dan membuka tab baru (`target="_blank"`). Homepage tidak menambahkan WooCommerce, CPT, checkout, payment, akun, shipping calculator, tracking backend, analytics, JavaScript custom, atau plugin baru.
 
 ### Homepage SEO
 

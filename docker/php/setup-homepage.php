@@ -22,6 +22,7 @@ const TC_HOME_MARKER = '_titip_cirebon_homepage_owned';
 const TC_HOME_CSS_START = '/* TITIP CIREBON HOMEPAGE: START */';
 const TC_HOME_CSS_END = '/* TITIP CIREBON HOMEPAGE: END */';
 const TC_HOME_META_DESCRIPTION = 'Titip jajanan dan produk pilihan langsung dari Cirebon untuk kamu di Sumedang. Open PO Senin–Kamis, pengiriman setiap Sabtu.';
+const TC_WHATSAPP_URL = 'https://wa.me/6285155092633?text=Halo%20Titip%20Cirebon,%20saya%20mau%20pesan%20jastip%20minggu%20ini.%20Boleh%20minta%20form%20list%20pesanannya?';
 
 function tc_home_fail(string $message): never
 {
@@ -101,13 +102,13 @@ function tc_home_text(string $name, string $html, string $classes = '', string $
     ]);
 }
 
-function tc_home_button(string $name, string $label, string $url, string $classes = ''): array
+function tc_home_button(string $name, string $label, string $url, string $classes = '', bool $isExternal = false): array
 {
     return tc_home_widget($name, 'button', [
         'text' => $label,
         'link' => [
             'url' => $url,
-            'is_external' => '',
+            'is_external' => $isExternal ? 'on' : '',
             'nofollow' => '',
             'custom_attributes' => '',
         ],
@@ -151,7 +152,7 @@ function tc_home_preflight(): void
 
     $plugins = (array) get_option('active_plugins', []);
     sort($plugins);
-    tc_home_assert($plugins === ['elementor-pro/elementor-pro.php', 'elementor/elementor.php'], 'Only Elementor Free and Elementor Pro may be active.');
+    tc_home_assert(in_array('elementor/elementor.php', $plugins, true) && in_array('elementor-pro/elementor-pro.php', $plugins, true), 'Elementor Free and Elementor Pro must be active.');
 
     $theme = wp_get_theme();
     tc_home_assert($theme->get_stylesheet() === 'hello-elementor', 'Hello Elementor must remain active.');
@@ -441,7 +442,7 @@ function tc_home_product_card(string $key, array $product, int $imageId): array
         tc_home_widget($key . '-price', 'html', ['html' => '<p class="tc-product-card__price">Rp xx.xxx</p>']),
         tc_home_container($key . '-footer', 'tc-product-card__footer', [
             tc_home_widget($key . '-price-note', 'html', ['html' => '<span class="tc-preview-note">Harga masih placeholder</span>']),
-            tc_home_button($key . '-button', 'Pesan Produk', home_url('/#whatsapp-order')),
+            tc_home_button($key . '-button', 'Pesan Produk', TC_WHATSAPP_URL, '', true),
         ], ['flex_direction' => 'row', 'align_items' => 'center', 'justify_content' => 'space-between', 'flex_wrap' => 'wrap']),
     ]);
     return tc_home_container($key . '-card', 'tc-product-card tc-home-product-card', [$media, $content]);
@@ -511,7 +512,7 @@ function tc_home_elements(int $heroImageId, array $productImageIds, array $compo
         tc_home_step('order-step-1', '01', 'Pilih Produk', 'Lihat produk yang tersedia pada PO minggu ini.'),
         tc_home_step('order-step-2', '02', 'Kirim Pesanan', 'Pesan melalui WhatsApp dan informasikan produk yang kamu inginkan.'),
         tc_home_step('order-step-3', '03', 'Kami Belikan di Cirebon', 'Pesanan diproses dan dibelikan langsung di Cirebon.'),
-        tc_home_step('order-step-4', '04', 'Sabtu Dikirim', 'Pesanan dibawa ke Sumedang untuk diantar atau COD sesuai kesepakatan.'),
+        tc_home_step('order-step-4', '04', 'Sabtu Dikirim', 'Pesanan dibawa ke Sumedang untuk diantar. Pembayaran minimal DP 50% dari total pesanan via transfer bank. Sisa pembayaran dilunasi saat pesanan siap dikirim.'),
     ];
     $order = tc_home_container('order-section', 'tc-home-order tc-section', [
         tc_home_container('order-inner', 'tc-shell-container', [
@@ -532,7 +533,7 @@ function tc_home_elements(int $heroImageId, array $productImageIds, array $compo
             tc_home_container('schedule-grid', 'tc-home-schedule-grid', [
                 tc_home_info_card('schedule-monday', 'Senin–Kamis', 'Open PO', 'Pilih produk dan kirim pesananmu.'),
                 tc_home_info_card('schedule-friday', 'Jumat', 'Proses dan persiapan pesanan', 'Pesanan direkap dan disiapkan di Cirebon.'),
-                tc_home_info_card('schedule-saturday', 'Sabtu', 'Pengiriman ke Sumedang', 'Pesanan dibawa untuk diantar atau COD.'),
+                tc_home_info_card('schedule-saturday', 'Sabtu', 'Pengiriman ke Sumedang', 'Pesanan dibawa untuk diantar ke alamat kamu.'),
             ]),
         ]),
     ]);
@@ -544,7 +545,7 @@ function tc_home_elements(int $heroImageId, array $productImageIds, array $compo
                 tc_home_info_card('shipping-free', 'Gratis Ongkir', 'Cimalaka dan Sumedang Kota', 'Gratis ongkir untuk Cimalaka serta Sumedang Kota / pusat kota.'),
                 tc_home_info_card('shipping-other', 'Area Lainnya', 'Ongkir sesuai jarak', 'Untuk area lainnya, ongkir disesuaikan dengan jarak.'),
             ]),
-            tc_home_widget('shipping-cod', 'html', ['html' => '<p class="tc-home-shipping-note"><strong>Bisa diantar sampai rumah atau COD.</strong></p>']),
+            tc_home_widget('shipping-dp', 'html', ['html' => '<p class="tc-home-shipping-note"><strong>Pembayaran minimal DP 50% dari total pesanan via transfer bank. Sisa pembayaran dilunasi saat pesanan siap dikirim.</strong></p>']),
         ]),
     ]);
 
@@ -588,7 +589,7 @@ function tc_home_support_elements(string $key): array
         ],
         'cara-order' => [
             'Cara Order',
-            '<p>Pilih produk pada PO minggu ini, kirim pesanan melalui WhatsApp, lalu kami belikan di Cirebon. Pesanan dibawa ke Sumedang setiap Sabtu untuk diantar atau COD sesuai kesepakatan.</p>',
+            '<p>Pilih produk pada PO minggu ini, kirim pesanan melalui WhatsApp, lalu kami belikan di Cirebon. Pembayaran minimal DP 50% dari total pesanan via transfer bank. Sisa pembayaran dilunasi saat pesanan siap dikirim. Pesanan dibawa ke Sumedang setiap Sabtu untuk diantar.</p>',
             'Lihat Langkah Order',
             home_url('/#cara-order'),
         ],
@@ -1178,12 +1179,13 @@ function tc_home_verify(): void
         'Jadwal PO',
         'Area Pengiriman',
         'Cimalaka dan Sumedang Kota',
-        'Bisa diantar sampai rumah atau COD.',
+        'Pembayaran minimal DP 50% dari total pesanan via transfer bank.',
         'Sudah pesan?',
         'Nanti kamu bisa mengecek perkembangan pesanan menggunakan Kode Pesanan.',
     ] as $copy) {
         tc_home_assert(str_contains($normalized, $copy), "Homepage copy is missing: {$copy}");
     }
+    tc_home_assert(str_contains($normalized, '6285155092633'), 'Homepage must contain WhatsApp CTA target URL.');
     foreach (['slider', 'video', 'lottie', 'testimonial', '<script', '@keyframes', 'parallax'] as $forbidden) {
         tc_home_assert(!str_contains(strtolower($normalized), strtolower($forbidden)), "Forbidden Homepage behavior/content found: {$forbidden}");
     }
