@@ -1,0 +1,89 @@
+name: CI Quality Gate
+
+on:
+  push:
+    branches: [ main, staging, "feature/**" ]
+  pull_request:
+    branches: [ main, staging ]
+
+jobs:
+  lint-php:
+    name: Lint PHP (8.4)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, mysqli, curl, json
+          coverage: none
+
+      - name: Validate PHP Syntax in Core Plugin
+        run: |
+          echo "Linting all PHP files in wordpress/wp-content/plugins/titip-cirebon-core/..."
+          ERRORS=0
+          while IFS= read -r -d '' file; do
+            if ! php -l "$file"; then
+              ERRORS=$((ERRORS + 1))
+            fi
+          done < <(find wordpress/wp-content/plugins/titip-cirebon-core/ docker/php/ -type f -name "*.php" -print0)
+
+          if [ $ERRORS -gt 0 ]; then
+            echo "Linting failed with $ERRORS syntax error(s)."
+            exit 1
+          fi
+          echo "All PHP files passed syntax check."
+
+  validate-docker:
+    name: Validate Docker Compose Configurations
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Test Docker Compose Base Configuration
+        run: |
+          docker compose --env-file .env.example config > /dev/null
+          echo "Base compose.yaml is valid."
+
+      - name: Test Docker Compose Production Configuration
+        run: |
+          # Buat dummy certs dan env agar compose config dapat dievaluasi
+          mkdir -p docker/nginx/certs
+          touch docker/nginx/certs/fullchain.crt docker/nginx/certs/privkey.key
+          cp .env.prod.example .env.prod
+          docker compose -f compose.yaml -f docker-compose.prod.yml --env-file .env.prod config > /dev/null
+          echo "Production docker-compose.prod.yml is valid."
+
+  validate-scripts:
+    name: Validate Shell Scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Check Shell Scripts Syntax
+        run: |
+          for script in scripts/*.sh docker/php/*.sh; do
+            if [ -f "$script" ]; then
+              bash -n "$script"
+              echo "Script $script syntax OK."
+            fi
+          done
+
+  check-baseline:
+    name: Verify Baseline Assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Verify Baseline Seed and Files Exist
+        run: |
+          test -s database/seed.sql.gz || { echo "ERROR: database/seed.sql.gz is missing or empty!"; exit 1; }
+          test -s database/uploads-seed.tar.gz || { echo "ERROR: database/uploads-seed.tar.gz is missing or empty!"; exit 1; }
+          test -f docker/php/sync-domain.php || { echo "ERROR: docker/php/sync-domain.php is missing!"; exit 1; }
+          echo "All baseline seed files are present."

@@ -55,6 +55,7 @@ services:
       - wordpress_data:/var/www/html
       - ./docker/php/conf.d/wordpress.ini:/usr/local/etc/php/conf.d/zz-titip-cirebon.ini:ro
       - ./wordpress/wp-content/plugins/titip-cirebon-core:/var/www/html/wp-content/plugins/titip-cirebon-core
+      - ./database:/var/www/database:ro
     networks:
       - app
     depends_on:

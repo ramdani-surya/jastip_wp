@@ -34,6 +34,7 @@ wp-install:
 		-e WP_ADMIN_PASSWORD="$(WP_ADMIN_PASSWORD)" \
 		-e WP_ADMIN_EMAIL="$(WP_ADMIN_EMAIL)" \
 		wordpress php < docker/php/install-wordpress.php
+	@docker compose exec -T wordpress php < docker/php/sync-domain.php
 
 wp-upgrade:
 	@docker compose exec -T wordpress php < docker/php/upgrade-wordpress.php

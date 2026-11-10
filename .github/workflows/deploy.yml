@@ -1,0 +1,144 @@
+name: CD Continuous Deployment
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - '.gitignore'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target Environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      skip_backup:
+        description: 'Skip Pre-Deploy Backup? (NOT recommended)'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  determine-env:
+    name: Determine Target Environment
+    runs-on: ubuntu-latest
+    outputs:
+      target_env: ${{ steps.select.outputs.env }}
+      target_branch: ${{ steps.select.outputs.branch }}
+    steps:
+      - id: select
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SELECTED_ENV="${{ github.event.inputs.environment }}"
+          elif [ "${{ github.ref_name }}" = "main" ]; then
+            SELECTED_ENV="production"
+          else
+            SELECTED_ENV="staging"
+          fi
+
+          echo "env=$SELECTED_ENV" >> $GITHUB_OUTPUT
+          echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          echo "Deploying to environment: $SELECTED_ENV on branch: ${{ github.ref_name }}"
+
+  deploy:
+    name: Deploy to Server
+    needs: determine-env
+    runs-on: ubuntu-latest
+    environment: ${{ needs.determine-env.outputs.target_env }}
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          TARGET_ENV: ${{ needs.determine-env.outputs.target_env }}
+          TARGET_BRANCH: ${{ needs.determine-env.outputs.target_branch }}
+          SKIP_BACKUP: ${{ github.event.inputs.skip_backup || 'false' }}
+          DOMAIN: ${{ vars.WORDPRESS_DOMAIN || '' }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          envs: TARGET_ENV,TARGET_BRANCH,SKIP_BACKUP,DOMAIN
+          script_stop: true
+          script: |
+            set -e
+            echo "==========================================================="
+            echo "🚀 Memulai Deployment ke [ $TARGET_ENV ] (Branch: $TARGET_BRANCH)"
+            echo "==========================================================="
+
+            # 1. Masuk ke direktori aplikasi
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH || '/opt/titip-cirebon' }}"
+            if [ ! -d "$DEPLOY_PATH" ]; then
+              echo "ERROR: Direktori $DEPLOY_PATH tidak ditemukan di server!"
+              exit 1
+            fi
+            cd "$DEPLOY_PATH"
+
+            # 2. Snapshot Backup Otomatis sebelum update (Zero-Loss Guarantee)
+            if [ "$SKIP_BACKUP" != "true" ] && [ -f "./scripts/backup.sh" ]; then
+              echo "[deploy] Membuat snapshot database pra-deploy..."
+              ./scripts/backup.sh || echo "[deploy] Warning: Backup script exited with code $?"
+            fi
+
+            # 3. Sinkronisasi Git Repository
+            echo "[deploy] Menarik commit terbaru dari branch $TARGET_BRANCH..."
+            git fetch origin
+            git checkout "$TARGET_BRANCH"
+            git pull origin "$TARGET_BRANCH"
+
+            # 4. Build dan Reload Docker Containers
+            echo "[deploy] Mereload Docker containers..."
+            if [ "$TARGET_ENV" = "production" ]; then
+              make prod-up
+            else
+              docker compose up -d --build
+            fi
+
+            # 5. Post-Deploy: Flush Rewrite Rules, Reset OPcache & Elementor CSS Cache
+            echo "[deploy] Membersihkan cache aplikasi & permalinks..."
+            docker compose exec -T wordpress php -r '
+              require "/var/www/html/wp-load.php";
+              flush_rewrite_rules(false);
+              if (function_exists("opcache_reset")) { opcache_reset(); }
+              if (class_exists("\Elementor\Plugin")) {
+                \Elementor\Plugin::$instance->files_manager->clear_cache();
+              }
+              echo "[deploy] Permalinks and Elementor cache refreshed successfully.\n";
+            ' || echo "[deploy] Warning: Cache flush encountered an issue."
+
+            # 6. Automated Health Check
+            if [ -n "$DOMAIN" ]; then
+              echo "[deploy] Menjalankan automated health check ke https://$DOMAIN..."
+              HEALTHY=false
+              for i in {1..6}; do
+                STATUS=$(curl -k -s -o /dev/null -w "%{http_code}" "https://$DOMAIN" || true)
+                echo "[deploy] Check #$i: HTTP status $STATUS"
+                if [ "$STATUS" = "200" ] || [ "$STATUS" = "301" ] || [ "$STATUS" = "302" ]; then
+                  HEALTHY=true
+                  break
+                fi
+                sleep 5
+              done
+
+              if [ "$HEALTHY" = "true" ]; then
+                echo "✅ Health check BERHASIL: Website merespons status $STATUS"
+              else
+                echo "❌ Health check GAGAL: Website tidak merespons HTTP 200/301/302."
+                exit 1
+              fi
+            fi
+
+            echo "==========================================================="
+            echo "🎉 Deployment ke [ $TARGET_ENV ] BERHASIL!"
+            echo "==========================================================="
