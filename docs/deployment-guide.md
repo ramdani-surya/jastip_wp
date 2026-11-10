@@ -30,7 +30,8 @@ Saat Anda melakukan push update kode:
 | Branch | Target Environment | Pemicu (Trigger) |
 |---|---|---|
 | `staging` | **Staging Server** | Otomatis setiap `git push origin staging` |
-| `main` | **Production Server** | Otomatis setiap `git push origin main` |
+| `production` | **Production Server** | Otomatis setiap `git push origin production` |
+| `main` | *(No Deploy)* | Hanya menjalankan tes CI (Quality Gate). Tidak men-deploy ke server |
 | *Bebas* | **Staging / Production** | Manual via GitHub Actions (`workflow_dispatch`) |
 
 ---

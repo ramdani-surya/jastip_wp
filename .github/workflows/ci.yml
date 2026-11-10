@@ -2,9 +2,9 @@ name: CI Quality Gate
 
 on:
   push:
-    branches: [ main, staging, "feature/**" ]
+    branches: [ main, staging, production, "feature/**" ]
   pull_request:
-    branches: [ main, staging ]
+    branches: [ main, staging, production ]
 
 jobs:
   lint-php:

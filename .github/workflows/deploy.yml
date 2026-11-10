@@ -3,7 +3,7 @@ name: CD Continuous Deployment
 on:
   push:
     branches:
-      - main
+      - production
       - staging
     paths-ignore:
       - 'docs/**'
@@ -41,8 +41,10 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             SELECTED_ENV="${{ github.event.inputs.environment }}"
-          elif [ "${{ github.ref_name }}" = "main" ]; then
+          elif [ "${{ github.ref_name }}" = "production" ]; then
             SELECTED_ENV="production"
+          elif [ "${{ github.ref_name }}" = "staging" ]; then
+            SELECTED_ENV="staging"
           else
             SELECTED_ENV="staging"
           fi
