@@ -353,14 +353,43 @@ function tc_site_css(): string
 {
     return <<<'CSS'
 /* Site shell and reusable component patterns built on Sprint 1B tokens. */
+html {
+    scroll-padding-top: 84px;
+}
+
+header.elementor-location-header,
 .tc-site-header {
-    position: relative;
-    z-index: 20;
+    position: sticky;
+    top: 0;
+    z-index: 100;
     width: 100%;
+}
+
+.tc-site-header {
     min-height: 76px;
     background: var(--tc-surface, #FFFFFF);
     border-bottom: 1px solid var(--tc-border, #E7E5E4);
     box-shadow: 0 2px 12px rgba(41, 37, 36, 0.04);
+}
+
+.admin-bar html {
+    scroll-padding-top: 116px;
+}
+
+.admin-bar header.elementor-location-header,
+.admin-bar .tc-site-header {
+    top: 32px;
+}
+
+@media (max-width: 782px) {
+    .admin-bar html {
+        scroll-padding-top: 130px;
+    }
+
+    .admin-bar header.elementor-location-header,
+    .admin-bar .tc-site-header {
+        top: 46px;
+    }
 }
 
 .tc-shell-container {
@@ -687,13 +716,15 @@ function tc_site_css(): string
 }
 
 @media (max-width: 767px) {
+    html { scroll-padding-top: 76px; }
     .tc-shell-container { padding-inline: 16px; }
     .tc-site-header, .tc-header-inner { min-height: 68px; }
     .tc-header-inner { gap: 12px; }
     .tc-brand .elementor-heading-title, .tc-brand .elementor-heading-title a { font-size: 20px; }
     .tc-primary-nav { flex: 0 1 auto; }
     .tc-header-cta { display: none; }
-    .tc-primary-nav .elementor-nav-menu__container.elementor-nav-menu--dropdown { position: fixed; top: 60px; left: 16px; right: 16px; width: calc(100vw - 32px); max-width: none; margin-top: 8px; }
+    .tc-primary-nav .elementor-nav-menu__container.elementor-nav-menu--dropdown { position: fixed; top: 68px; left: 16px; right: 16px; width: calc(100vw - 32px); max-width: none; margin-top: 8px; }
+    .admin-bar .tc-primary-nav .elementor-nav-menu__container.elementor-nav-menu--dropdown { top: 114px; }
     .tc-section-heading-pattern { grid-template-columns: 1fr; align-items: start; }
     .tc-trust-grid, .tc-content-grid, .tc-preview-template-grid { grid-template-columns: 1fr; }
     .tc-footer-grid { grid-template-columns: 1fr; gap: 32px; }
@@ -1055,6 +1086,7 @@ function tc_site_verify(): void
     foreach (['.tc-site-header', '.tc-site-footer', '.tc-button--utility', '.tc-whatsapp-pattern', '.tc-trust-card', '.tc-section-heading-pattern'] as $selector) {
         tc_site_assert(str_contains($css, $selector), "Required selector {$selector} is missing.");
     }
+    tc_site_assert(str_contains($css, 'position: sticky'), 'Header CSS must configure sticky navigation.');
     tc_site_assert(!preg_match('/(<script|@keyframes|parallax|lottie|video)/i', $headerData . $footerData . $previewData . $css), 'Forbidden heavy/custom behavior found.');
     tc_site_assert_homepage_state();
 

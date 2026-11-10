@@ -590,7 +590,7 @@ function tc_home_elements(int $heroImageId, array $productImageIds, array $compo
         ]),
     ], ['_element_id' => 'lacak-pesanan']);
 
-    $finalCta = tc_home_container('final-cta-section', 'tc-home-cta tc-home-cta--final tc-section', [
+    $finalCta = tc_home_container('final-cta-section', 'tc-home-cta tc-home-cta--compact tc-section--compact', [
         tc_home_container('final-cta-inner', 'tc-shell-container', [
             tc_home_template('final-whatsapp-template', (int) $componentIds['whatsapp-cta']),
         ]),
@@ -816,18 +816,32 @@ function tc_home_css(): string
     background: var(--tc-background);
 }
 
-.elementor-kit-11 .tc-home-cta--compact .tc-whatsapp-pattern {
-    grid-template-columns: minmax(0, 1fr) auto;
+.elementor-kit-11 .tc-home-cta .tc-whatsapp-pattern {
+    display: flex;
+    flex-direction: column;
     align-items: center;
+    text-align: center;
+    justify-content: center;
+    gap: 16px;
 }
 
-.elementor-kit-11 .tc-home-cta--compact .tc-whatsapp-pattern > .elementor-widget-text-editor {
-    grid-column: 1;
+.elementor-kit-11 .tc-home-cta .tc-whatsapp-pattern .elementor-widget-heading,
+.elementor-kit-11 .tc-home-cta .tc-whatsapp-pattern .elementor-heading-title,
+.elementor-kit-11 .tc-home-cta .tc-whatsapp-pattern .elementor-widget-text-editor,
+.elementor-kit-11 .tc-home-cta .tc-whatsapp-pattern .elementor-widget-text-editor p {
+    text-align: center;
 }
 
-.elementor-kit-11 .tc-home-cta--compact .tc-whatsapp-pattern > .elementor-widget-button {
-    grid-column: 2;
-    grid-row: 1 / span 2;
+.elementor-kit-11 .tc-home-cta .tc-whatsapp-pattern .elementor-widget-text-editor p {
+    max-width: 56ch;
+    margin-inline: auto;
+}
+
+.elementor-kit-11 .tc-home-cta .tc-whatsapp-pattern .elementor-widget-button {
+    display: flex;
+    justify-content: center;
+    align-self: center;
+    text-align: center;
 }
 
 .elementor-kit-11 .tc-home-schedule-grid .tc-home-info-card:nth-child(2) {
@@ -867,10 +881,6 @@ function tc_home_css(): string
 
 .elementor-kit-11 .tc-home-tracking__copy {
     gap: 12px;
-}
-
-.elementor-kit-11 .tc-home-cta--final {
-    background: var(--tc-surface);
 }
 
 .elementor-kit-11 .tc-support-page {
@@ -937,18 +947,9 @@ function tc_home_css(): string
 
     .elementor-kit-11 .tc-home-actions .elementor-button,
     .elementor-kit-11 .tc-home-centered-button .elementor-button,
-    .elementor-kit-11 .tc-home-tracking .elementor-button {
+    .elementor-kit-11 .tc-home-tracking .elementor-button,
+    .elementor-kit-11 .tc-home-cta .tc-whatsapp-pattern .elementor-button {
         width: 100%;
-    }
-
-    .elementor-kit-11 .tc-home-cta--compact .tc-whatsapp-pattern {
-        grid-template-columns: 1fr;
-    }
-
-    .elementor-kit-11 .tc-home-cta--compact .tc-whatsapp-pattern > .elementor-widget-text-editor,
-    .elementor-kit-11 .tc-home-cta--compact .tc-whatsapp-pattern > .elementor-widget-button {
-        grid-column: 1;
-        grid-row: auto;
     }
 }
 CSS;

@@ -185,7 +185,7 @@ Basic Content Pattern       Two-column informational pattern
 
 Primary navigation berisi Produk, Cara Order, Lacak Pesanan, dan Tentang Kami. Target masih berupa internal homepage anchors karena halaman bisnis final berada di luar Sprint 1C. WhatsApp CTA mengarah ke tautan resmi WhatsApp dengan pre-filled message pemesanan dan membuka tab baru. Jangan memasukkan nomor, alamat, email, atau akun sosial sementara.
 
-CSS tambahan disimpan pada blok `TITIP CIREBON SITE COMPONENTS` di WordPress Additional CSS. Script hanya mengganti blok miliknya, mempertahankan CSS lain, memakai token Sprint 1B, dan tidak menggunakan `!important` atau JavaScript custom. Header mobile menggunakan native Elementor Pro Nav Menu pada breakpoint 767px dengan tombol dan link minimum 44px.
+CSS tambahan disimpan pada blok `TITIP CIREBON SITE COMPONENTS` di WordPress Additional CSS. Script hanya mengganti blok miliknya, mempertahankan CSS lain, memakai token Sprint 1B, dan tidak menggunakan `!important` atau JavaScript custom. Navbar/Header dikonfigurasi sticky (`position: sticky; top: 0;`) dengan scroll-padding terkompensasi dan dukungan admin bar. Header mobile menggunakan native Elementor Pro Nav Menu pada breakpoint 767px dengan tombol dan link minimum 44px.
 
 Untuk maintenance, ubah struktur declarative atau controlled CSS di `docker/php/setup-site-components.php`, lalu jalankan apply dan verify. Stable ownership marker membuat rerun memperbarui menu, template, dan preview yang sama; konflik slug/nama dengan konten pengguna menyebabkan proses berhenti sebelum overwrite.
 
