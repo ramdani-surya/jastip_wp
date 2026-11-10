@@ -141,24 +141,28 @@ class TC_Shortcode_Tracking {
 				</p>
 
 				<form method="get" action="" class="tc-tracking-form">
-					<div class="tc-tracking-input-group">
+					<div class="tc-tracking-input-group tc-tracking-input-group--stacked">
 						<div class="tc-tracking-field">
+							<label for="tc_order_code_input" class="tc-tracking-field-label">Kode Pesanan</label>
 							<input
 								type="text"
+								id="tc_order_code_input"
 								name="kode_pesanan"
 								value="<?php echo esc_attr( $kode_pesanan ); ?>"
-								placeholder="Kode Pesanan (TC-2026-0001)"
+								placeholder="Contoh: TC-2026-0001"
 								class="tc-tracking-input"
 								required
 								autocomplete="off"
 							>
 						</div>
 						<div class="tc-tracking-field">
+							<label for="tc_order_wa_input" class="tc-tracking-field-label">Nomor WhatsApp</label>
 							<input
 								type="text"
+								id="tc_order_wa_input"
 								name="no_wa"
 								value="<?php echo esc_attr( $no_wa ); ?>"
-								placeholder="No. WhatsApp (08123456789)"
+								placeholder="Contoh: 08123456789"
 								class="tc-tracking-input tc-tracking-input--phone"
 								required
 								autocomplete="off"
@@ -377,18 +381,27 @@ class TC_Shortcode_Tracking {
 			}
 			.tc-tracking-input-group {
 				display: flex;
-				gap: 12px;
-				max-width: 660px;
+				flex-direction: column;
+				gap: 16px;
+				max-width: 480px;
 				margin: 0 auto;
+				text-align: left;
 			}
 			.tc-tracking-field {
-				flex: 1;
-				min-width: 0;
+				width: 100%;
+			}
+			.tc-tracking-field-label {
+				display: block;
+				font-size: 13px;
+				font-weight: 600;
+				color: #475569;
+				margin-bottom: 6px;
+				letter-spacing: 0.3px;
 			}
 			.tc-tracking-input {
 				width: 100%;
 				box-sizing: border-box;
-				padding: 12px 16px;
+				padding: 13px 16px;
 				font-size: 15px;
 				border: 2px solid #cbd5e1;
 				border-radius: 8px;
@@ -410,16 +423,18 @@ class TC_Shortcode_Tracking {
 				align-items: center;
 				justify-content: center;
 				gap: 8px;
+				width: 100%;
 				background: #008a3c;
 				color: #ffffff;
 				border: none;
-				padding: 12px 20px;
-				font-size: 14px;
+				padding: 14px 20px;
+				font-size: 15px;
 				font-weight: 600;
 				border-radius: 8px;
 				cursor: pointer;
 				transition: background-color 0.2s, transform 0.1s;
 				white-space: nowrap;
+				margin-top: 4px;
 			}
 			.tc-tracking-btn:hover {
 				background: #007031;
@@ -649,12 +664,6 @@ class TC_Shortcode_Tracking {
 				color: #007031;
 			}
 			@media (max-width: 640px) {
-				.tc-tracking-input-group {
-					flex-direction: column;
-				}
-				.tc-tracking-btn {
-					width: 100%;
-				}
 				.tc-tracking-card-header {
 					flex-direction: column;
 					gap: 12px;
