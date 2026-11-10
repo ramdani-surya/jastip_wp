@@ -62,7 +62,6 @@ function tc_site_routes(): array
     ];
     $keys = [
         'products' => 'produk',
-        'order-guide' => 'cara-order',
         'tracking' => 'lacak-pesanan',
         'about' => 'tentang-kami',
     ];
@@ -979,6 +978,7 @@ function tc_site_verify(): void
 {
     $menu = tc_site_resolve_menu(false);
     $routes = tc_site_routes();
+    tc_site_assert($routes['order-guide'] === home_url('/#cara-order'), 'Cara Order route must point to homepage section #cara-order.');
     $expectedMenu = [
         ['Produk', $routes['products']],
         ['Cara Order', $routes['order-guide']],

@@ -201,7 +201,7 @@ make homepage
 make homepage-verify
 ```
 
-`make homepage` menjalankan setup deklaratif di `docker/php/setup-homepage.php`, memperbarui ulang site components agar navigation memakai route final, lalu memverifikasi hasil. Command aman dijalankan ulang: Home, empat support pages, dua Media Library placeholders, Custom Code SEO, blok Additional CSS, dan menu item dikelola dengan ID serta ownership marker yang stabil. Konflik slug Home dihentikan tanpa overwrite. Support page user yang sudah published boleh dipakai sebagai destination tanpa mengubah kontennya; draft/private user content tidak diambil alih.
+`make homepage` menjalankan setup deklaratif di `docker/php/setup-homepage.php`, memperbarui ulang site components agar navigation memakai route final, lalu memverifikasi hasil. Command aman dijalankan ulang: Home, tiga support pages, dua Media Library placeholders, Custom Code SEO, blok Additional CSS, dan menu item dikelola dengan ID serta ownership marker yang stabil. Konflik slug Home dihentikan tanpa overwrite. Support page user yang sudah published boleh dipakai sebagai destination tanpa mengubah kontennya; draft/private user content tidak diambil alih.
 
 Homepage terpublikasi di <http://localhost:8080/> dan memakai Elementor Full Width agar global Header/Footer Sprint 1C tetap tampil. Urutan kontennya adalah Hero, PO Minggu Ini, alasan memilih layanan, Cara Order, CTA WhatsApp ringkas, Jadwal PO, Area Pengiriman, placeholder tracking, dan CTA WhatsApp final. Tiga kartu produk adalah native editable Elementor instances yang memakai class/token Product Card Sprint 1C; tidak ada database produk atau harga fiktif final.
 
@@ -211,11 +211,11 @@ Script membuat dua PNG deterministik di Media Library: satu placeholder hero dan
 
 ### Routes dan Placeholder Fitur
 
-Navigation Header/Footer mengarah ke halaman berikut agar tidak ada broken route:
+Navigation Header/Footer mengarah ke halaman dan in-page section berikut agar tidak ada broken route:
 
 ```text
 /produk/          Placeholder katalog; kembali ke section PO Minggu Ini
-/cara-order/      Ringkasan cara order; kembali ke section Cara Order
+/#cara-order      In-page anchor langsung ke section Cara Order di homepage
 /lacak-pesanan/   Informasi fitur yang sedang disiapkan; tanpa form/backend
 /tentang-kami/    Deskripsi faktual layanan dan jadwal
 ```

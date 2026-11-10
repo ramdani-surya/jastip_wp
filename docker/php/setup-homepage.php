@@ -227,10 +227,41 @@ function tc_home_support_specs(): array
 {
     return [
         'produk' => ['Produk', 'produk'],
-        'cara-order' => ['Cara Order', 'cara-order'],
         'lacak-pesanan' => ['Lacak Pesanan', 'lacak-pesanan'],
         'tentang-kami' => ['Tentang Kami', 'tentang-kami'],
     ];
+}
+
+function tc_home_cleanup_deprecated_support(): void
+{
+    $ids = get_option(TC_HOME_SUPPORT_OPTION, []);
+    if (is_array($ids) && isset($ids['cara-order'])) {
+        $oldId = (int) $ids['cara-order'];
+        if ($oldId > 0) {
+            $marker = (string) get_post_meta($oldId, TC_HOME_MARKER, true);
+            if ($marker === 'cara-order') {
+                $cssFile = Elementor_Post_CSS::create($oldId)->get_path();
+                if (is_file($cssFile)) {
+                    @unlink($cssFile);
+                }
+                wp_delete_post($oldId, true);
+            }
+        }
+        unset($ids['cara-order']);
+        update_option(TC_HOME_SUPPORT_OPTION, $ids);
+    }
+
+    $slugPage = get_page_by_path('cara-order', OBJECT, 'page');
+    if ($slugPage instanceof WP_Post) {
+        $marker = (string) get_post_meta($slugPage->ID, TC_HOME_MARKER, true);
+        if ($marker === 'cara-order') {
+            $cssFile = Elementor_Post_CSS::create($slugPage->ID)->get_path();
+            if (is_file($cssFile)) {
+                @unlink($cssFile);
+            }
+            wp_delete_post($slugPage->ID, true);
+        }
+    }
 }
 
 function tc_home_resolve_support(string $key, string $title, string $slug, bool $allowCreate): array
@@ -586,12 +617,6 @@ function tc_home_support_elements(string $key): array
             '<p>Katalog lengkap Titip Cirebon belum tersedia. Lihat tiga pilihan placeholder pada PO Minggu Ini di homepage.</p>',
             'Lihat PO Minggu Ini',
             home_url('/#produk'),
-        ],
-        'cara-order' => [
-            'Cara Order',
-            '<p>Pilih produk pada PO minggu ini, kirim pesanan melalui WhatsApp, lalu kami belikan di Cirebon. Pembayaran minimal DP 50% dari total pesanan via transfer bank. Sisa pembayaran dilunasi saat pesanan siap dikirim. Pesanan dibawa ke Sumedang setiap Sabtu untuk diantar.</p>',
-            'Lihat Langkah Order',
-            home_url('/#cara-order'),
         ],
         'lacak-pesanan' => [
             'Lacak Pesanan',
@@ -1017,6 +1042,8 @@ function tc_home_apply(): void
     tc_home_assert($admins !== [], 'No administrator account is available for Elementor saves.');
     wp_set_current_user((int) $admins[0]);
 
+    tc_home_cleanup_deprecated_support();
+
     $homeId = tc_home_resolve_home(true);
     $existingImages = tc_home_existing_image_ids($homeId);
 
@@ -1139,6 +1166,9 @@ function tc_home_verify(): void
         }
         $supportIds[$key] = $id;
     }
+    tc_home_assert(get_page_by_path('cara-order', OBJECT, 'page') === null, 'Support page cara-order must be deleted.');
+    $supportOption = get_option(TC_HOME_SUPPORT_OPTION, []);
+    tc_home_assert(is_array($supportOption) && !isset($supportOption['cara-order']), 'Support page cara-order must not be present in options.');
 
     $trackingData = wp_json_encode(tc_home_decoded_elements($supportIds['lacak-pesanan']), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     tc_home_assert(str_contains($trackingData, 'Fitur pelacakan pesanan sedang kami siapkan.'), 'Tracking placeholder copy is missing.');
