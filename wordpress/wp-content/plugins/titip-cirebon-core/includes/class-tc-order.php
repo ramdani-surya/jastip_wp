@@ -123,8 +123,13 @@ class TC_Order {
 	 * Mendapatkan kode pesanan berikutnya untuk tahun berjalan.
 	 *
 	 * Format: TC-YYYY-XXXX (contoh: TC-2026-0001).
-	 * Nomor urut reset setiap tahun dan aman dari duplikasi.
-	 * Mengabaikan status 'auto-draft', 'trash', dan 'inherit'.
+	 * Nomor urut reset setiap tahun dan 100% aman dari duplikasi.
+	 *
+	 * Strategi dua lapis:
+	 *  1. MAX() — termasuk post di 'trash' agar nomor urut yang pernah
+	 *     terbit tidak dipakai ulang (penting untuk audit trail).
+	 *  2. Collision-check loop — memastikan kode yang dihasilkan benar-benar
+	 *     belum ada di database sebelum dikembalikan ke pemanggil.
 	 *
 	 * @return string
 	 */
@@ -134,12 +139,14 @@ class TC_Order {
 		$year         = gmdate( 'Y' );
 		$like_pattern = $wpdb->esc_like( "TC-{$year}-" ) . '%';
 
+		// Lapis 1: Ambil angka urut tertinggi untuk tahun ini.
+		// 'trash' sengaja TIDAK difilter agar nomor yang pernah terbit tidak dipakai ulang.
 		$max_number = $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT MAX(CAST(SUBSTRING(post_title, %d) AS UNSIGNED))
                  FROM {$wpdb->posts}
                  WHERE post_type = 'tc_order'
-                   AND post_status NOT IN ('auto-draft', 'trash', 'inherit')
+                   AND post_status NOT IN ('auto-draft', 'inherit')
                    AND post_title LIKE %s",
 				9, // Posisi karakter setelah "TC-YYYY-" (8 karakter + 1 offset).
 				$like_pattern
@@ -147,7 +154,26 @@ class TC_Order {
 		);
 
 		$next_number = ( (int) $max_number ) + 1;
-		return sprintf( 'TC-%s-%04d', $year, $next_number );
+
+		// Lapis 2: Collision-check loop — jamin kode belum terpakai meski ada race condition.
+		do {
+			$order_code = sprintf( 'TC-%s-%04d', $year, $next_number );
+			$exists     = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT ID FROM {$wpdb->posts}
+					 WHERE post_type = 'tc_order'
+					   AND post_title = %s
+					 LIMIT 1",
+					$order_code
+				)
+			);
+			if ( ! $exists ) {
+				break;
+			}
+			$next_number++;
+		} while ( true );
+
+		return $order_code;
 	}
 
 	/**
@@ -240,6 +266,8 @@ class TC_Order {
 
 	/**
 	 * Auto-generate kode pesanan unik sebagai fallback saat hook wp_insert_post terpanggil.
+	 * Juga menyimpan kode ke post meta _tc_order_code sebagai audit trail dan
+	 * kemudahan query tanpa JOIN ke wp_posts.
 	 *
 	 * @param int      $post_id Post ID.
 	 * @param \WP_Post $post    Post object.
@@ -255,8 +283,12 @@ class TC_Order {
 			return;
 		}
 
-		// Jika post_title sudah berformat kode pesanan yang benar, tidak perlu apa-apa.
+		// Jika post_title sudah berformat kode pesanan yang benar, hanya sinkronisasi meta.
 		if ( ! empty( $post->post_title ) && preg_match( '/^TC-\d{4}-\d{4,}$/', $post->post_title ) ) {
+			// Pastikan meta tersinkronisasi meski kode sudah ada di title.
+			if ( ! get_post_meta( $post_id, '_tc_order_code', true ) ) {
+				update_post_meta( $post_id, '_tc_order_code', $post->post_title );
+			}
 			return;
 		}
 
@@ -274,6 +306,9 @@ class TC_Order {
 			array( '%s', '%s' ),
 			array( '%d' )
 		);
+
+		// Simpan kode ke post meta untuk audit trail dan kemudahan query.
+		update_post_meta( $post_id, '_tc_order_code', $order_code );
 
 		clean_post_cache( $post_id );
 	}
@@ -447,11 +482,16 @@ class TC_Order {
 
 	/**
 	 * Save order meta data on post save.
-	 * Menerapkan nonce verification, autosave guard, dan capability check.
+	 * Menerapkan nonce verification, revision guard, autosave guard, dan capability check.
 	 *
 	 * @param int $post_id Post ID.
 	 */
 	public function save_meta( int $post_id ): void {
+		// Lewati revisi — revision tidak menyimpan meta order.
+		if ( wp_is_post_revision( $post_id ) ) {
+			return;
+		}
+
 		// Verifikasi nonce.
 		if ( ! isset( $_POST['tc_order_meta_nonce'] ) ) {
 			return;
@@ -488,9 +528,9 @@ class TC_Order {
 			}
 		}
 
-		// --- Simpan total harga ---
+		// --- Simpan total harga (integer non-negatif) ---
 		if ( isset( $_POST['_tc_total_price'] ) ) {
-			update_post_meta( $post_id, '_tc_total_price', intval( $_POST['_tc_total_price'] ) );
+			update_post_meta( $post_id, '_tc_total_price', abs( intval( $_POST['_tc_total_price'] ) ) );
 		}
 
 		// --- Simpan area pengiriman (whitelist validation) ---
@@ -509,6 +549,12 @@ class TC_Order {
 				$status_value = 'pesanan_diterima';
 			}
 			update_post_meta( $post_id, '_tc_order_status', $status_value );
+		}
+
+		// --- Sinkronisasi _tc_order_code dari post_title untuk audit trail ---
+		$post = get_post( $post_id );
+		if ( $post && preg_match( '/^TC-\d{4}-\d{4,}$/', $post->post_title ) ) {
+			update_post_meta( $post_id, '_tc_order_code', $post->post_title );
 		}
 	}
 
