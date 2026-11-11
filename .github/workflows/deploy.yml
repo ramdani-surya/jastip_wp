@@ -104,12 +104,13 @@ jobs:
             cd "$DEPLOY_PATH"
 
             # 2. Injeksi Environment dari GitHub Secret (Ephemeral - otomatis dihapus saat deploy selesai)
+            TARGET_ENV_FILE=".env.prod"
+            if [ "$TARGET_ENV" != "production" ]; then
+              TARGET_ENV_FILE=".env"
+            fi
+
             if [ -n "$ENV_B64" ]; then
               echo "[deploy] Memuat variabel environment dari GitHub Secrets..."
-              TARGET_ENV_FILE=".env.prod"
-              if [ "$TARGET_ENV" != "production" ]; then
-                TARGET_ENV_FILE=".env"
-              fi
               trap "rm -f $TARGET_ENV_FILE" EXIT INT TERM
               if printf "%s" "$ENV_B64" | tr -d '\r\n ' | (base64 -di 2>/dev/null || base64 -d) > "$TARGET_ENV_FILE" 2>/tmp/b64.err; then
                 chmod 600 "$TARGET_ENV_FILE"
@@ -145,9 +146,19 @@ jobs:
               fi
             fi
 
+            # Tentukan perintah docker compose yang menyertakan file environment
+            COMPOSE_CMD="docker compose"
+            if [ -f "$TARGET_ENV_FILE" ]; then
+              if [ "$TARGET_ENV" = "production" ]; then
+                COMPOSE_CMD="docker compose -f compose.yaml -f docker-compose.prod.yml --env-file $TARGET_ENV_FILE"
+              else
+                COMPOSE_CMD="docker compose --env-file $TARGET_ENV_FILE"
+              fi
+            fi
+
             # 5b. Automated Day-0 Baseline Seeding (Idempotent)
             echo "[deploy] Memeriksa status instalasi database WordPress..."
-            TABLE_EXISTS=$(docker compose exec -T db sh -c \
+            TABLE_EXISTS=$($COMPOSE_CMD exec -T db sh -c \
               'MYSQL_PWD="$MYSQL_PASSWORD" mysql -N -s --user="$MYSQL_USER" "$MYSQL_DATABASE" -e "SHOW TABLES LIKE '\''wp_options'\'';"' < /dev/null 2>/dev/null || echo "")
 
             if [ -z "$TABLE_EXISTS" ]; then
@@ -156,7 +167,7 @@ jobs:
               # 1. Impor baseline SQL terkompresi langsung ke container db
               if [ -f "database/seed.sql.gz" ]; then
                 echo "[deploy] Mengimpor database/seed.sql.gz..."
-                gunzip -c database/seed.sql.gz | docker compose exec -T db sh -c \
+                gunzip -c database/seed.sql.gz | $COMPOSE_CMD exec -T db sh -c \
                   'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" "$MYSQL_DATABASE"'
                 echo "[deploy] Baseline SQL berhasil diimpor."
               fi
@@ -164,14 +175,14 @@ jobs:
               # 2. Ekstrak media uploads awal
               if [ -f "database/uploads-seed.tar.gz" ]; then
                 echo "[deploy] Mengekstrak media awal ke wp-content/uploads..."
-                docker compose exec -T wordpress tar --extract --gzip --directory /var/www/html/wp-content < database/uploads-seed.tar.gz
-                docker compose exec -T wordpress chown -R www-data:www-data /var/www/html/wp-content/uploads
+                $COMPOSE_CMD exec -T wordpress tar --extract --gzip --directory /var/www/html/wp-content < database/uploads-seed.tar.gz
+                $COMPOSE_CMD exec -T wordpress chown -R www-data:www-data /var/www/html/wp-content/uploads
                 echo "[deploy] Media uploads berhasil diekstrak."
               fi
 
               # 3. Sinkronkan domain dan serialisasi JSON/PHP ke URL target
               echo "[deploy] Menjalankan penyelarasan domain (sync-domain.php)..."
-              docker compose exec -T wordpress php < docker/php/sync-domain.php < /dev/null
+              $COMPOSE_CMD exec -T wordpress php < docker/php/sync-domain.php < /dev/null
 
               # 4. Sinkronkan akun Administrator jika variabel diset
               if [ -f "$TARGET_ENV_FILE" ]; then
@@ -183,7 +194,7 @@ jobs:
 
               if [ -n "${WP_ADMIN_USER:-}" ] && [ -n "${WP_ADMIN_PASSWORD:-}" ]; then
                 echo "[deploy] Menyinkronkan akun administrator '$WP_ADMIN_USER'..."
-                docker compose exec -T \
+                $COMPOSE_CMD exec -T \
                   -e WP_ADMIN_USER="$WP_ADMIN_USER" \
                   -e WP_ADMIN_PASSWORD="$WP_ADMIN_PASSWORD" \
                   -e WP_ADMIN_EMAIL="${WP_ADMIN_EMAIL:-admin@titipcirebon.com}" \
@@ -213,7 +224,7 @@ jobs:
 
             # 6. Post-Deploy: Flush Rewrite Rules, Reset OPcache & Elementor CSS Cache
             echo "[deploy] Membersihkan cache aplikasi & permalinks..."
-            docker compose exec -T wordpress php -r '
+            $COMPOSE_CMD exec -T wordpress php -r '
               require "/var/www/html/wp-load.php";
               flush_rewrite_rules(false);
               if (function_exists("opcache_reset")) { opcache_reset(); }
