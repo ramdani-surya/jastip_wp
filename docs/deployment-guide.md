@@ -65,7 +65,26 @@ Tambahkan juga Configuration Variable:
 
 > [!TIP]
 > **Toleransi Protokol (HTTPS & HTTP Fallback)**:
-> Automated healthcheck akan mencoba akses via `https://` terlebih dahulu (mengabaikan self-signed cert). Jika port 443 belum aktif atau SSL belum dipasang di VPS, script secara cerdas akan otomatis fallback mengecek via `http://`. Jika VPS belum memiliki domain atau sertifikat SSL, Anda juga dapat menyetel `WORDPRESS_PROTOCOL=http` di file `.env.prod` server Anda.
+> Automated healthcheck akan mencoba akses via `https://` terlebih dahulu (mengabaikan self-signed cert). Jika port 443 belum aktif atau SSL belum dipasang di VPS, script secara cerdas akan otomatis fallback mengecek via `http://`.
+>
+> **Mode HTTP (Akses via IP Server)**:
+> Jika VPS belum memiliki domain atau sertifikat SSL, Anda dapat mengakses langsung via IP (`http://103.93.134.96/`). Cukup set variabel di `ENV_FILE` secret:
+> ```ini
+> WORDPRESS_DOMAIN=103.93.134.96
+> WORDPRESS_PROTOCOL=http
+> NGINX_CONF_FILE=./docker/nginx/conf.d/default.prod.http.conf
+> ```
+>
+> **Migrasi ke HTTPS (Saat Domain & SSL Siap)**:
+> Ketika Anda sudah memiliki domain dan sertifikat SSL:
+> 1. Salin `fullchain.crt` dan `privkey.key` ke folder `docker/nginx/certs/` di server.
+> 2. Perbarui `ENV_FILE` secret di GitHub:
+>    ```ini
+>    WORDPRESS_DOMAIN=namadomainanda.com
+>    WORDPRESS_PROTOCOL=https
+>    NGINX_CONF_FILE=./docker/nginx/conf.d/default.prod.ssl.conf
+>    ```
+> 3. Jalankan ulang deployment. Nginx akan otomatis me-redirect HTTP ke HTTPS dengan enkripsi TLS modern.
 
 ---
 
