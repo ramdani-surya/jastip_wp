@@ -53,7 +53,7 @@ $COMPOSE_CMD exec -T db sh -c \
     --lock-tables=false \
     --no-tablespaces \
     --default-character-set=utf8mb4 \
-    "$MYSQL_DATABASE"' > "$DB_FILE"
+    "$MYSQL_DATABASE"' < /dev/null > "$DB_FILE"
 
 if [ -s "$DB_FILE" ]; then
   echo "[backup] Database tersimpan: $DB_FILE ($(du -sh "$DB_FILE" | cut -f1))"
@@ -72,7 +72,7 @@ if $COMPOSE_CMD exec -T wordpress tar \
     --create \
     --gzip \
     --directory /var/www/html/wp-content \
-    uploads > "$UPLOADS_FILE" 2>/dev/null; then
+    uploads < /dev/null > "$UPLOADS_FILE" 2>/dev/null; then
   if [ -s "$UPLOADS_FILE" ]; then
     echo "[backup] Uploads tersimpan: $UPLOADS_FILE ($(du -sh "$UPLOADS_FILE" | cut -f1))"
   else
