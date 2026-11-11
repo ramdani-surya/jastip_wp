@@ -1,9 +1,10 @@
 SHELL := /bin/bash
 
 -include .env
+-include .env.prod
 export
 
-.PHONY: up down restart ps logs shell db-shell wp-install wp-upgrade wp-verify-core design-system design-system-verify site-components site-components-verify homepage homepage-verify db-backup db-restore prod-up prod-down prod-logs backup restore
+.PHONY: up down restart ps logs shell db-shell wp-install wp-upgrade wp-verify-core design-system design-system-verify site-components site-components-verify homepage homepage-verify db-backup db-restore prod-up prod-down prod-logs prod-install backup restore
 
 up:
 	docker compose up -d --build
@@ -112,6 +113,19 @@ prod-logs:
 	else \
 		docker compose -f compose.yaml -f docker-compose.prod.yml logs -f --tail=200; \
 	fi
+
+# Inisialisasi awal database (Day-0 seed) di production
+prod-install:
+	@set -e; \
+	echo "Mengimpor baseline database seed..."; \
+	gunzip -c database/seed.sql.gz | docker compose exec -T db sh -c 'MYSQL_PWD="$$MYSQL_PASSWORD" exec mysql --user="$$MYSQL_USER" "$$MYSQL_DATABASE"'; \
+	if [ -f database/uploads-seed.tar.gz ]; then \
+		echo "Mengekstrak baseline media uploads..."; \
+		docker compose exec -T wordpress tar --extract --gzip --directory /var/www/html/wp-content < database/uploads-seed.tar.gz; \
+		docker compose exec -T wordpress chown -R www-data:www-data /var/www/html/wp-content/uploads; \
+	fi; \
+	echo "Menyelaraskan URL target..."; \
+	docker compose exec -T wordpress php < docker/php/sync-domain.php
 
 # Backup database + uploads ke folder backups/
 backup:
