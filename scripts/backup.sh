@@ -27,12 +27,25 @@ cd "$PROJECT_DIR"
 echo "[backup] Memulai backup — $TIMESTAMP"
 mkdir -p "$BACKUP_DIR"
 
+# Tentukan perintah docker compose yang sesuai (production vs staging/dev)
+COMPOSE_CMD="docker compose"
+if [ -f .env.prod ]; then
+  COMPOSE_CMD="docker compose -f compose.yaml -f docker-compose.prod.yml --env-file .env.prod"
+fi
+
+# Cek apakah container db sedang berjalan. Jika belum (misal fresh install / Day-0), lewati backup.
+RUNNING_DB=$($COMPOSE_CMD ps --status running -q db 2>/dev/null || true)
+if [ -z "$RUNNING_DB" ]; then
+  echo "[backup] Container database belum berjalan (skip backup otomatis untuk instalasi awal)."
+  exit 0
+fi
+
 # -----------------------------------------------------------------------------
 # 1. Database Dump
 # -----------------------------------------------------------------------------
 DB_FILE="$BACKUP_DIR/db-${TIMESTAMP}.sql"
 echo "[backup] Melakukan dump database..."
-docker compose exec -T db sh -c \
+$COMPOSE_CMD exec -T db sh -c \
   'MYSQL_PWD="$MYSQL_PASSWORD" exec mysqldump \
     --user="$MYSQL_USER" \
     --single-transaction \
@@ -55,7 +68,7 @@ fi
 # -----------------------------------------------------------------------------
 UPLOADS_FILE="$BACKUP_DIR/uploads-${TIMESTAMP}.tar.gz"
 echo "[backup] Mengarsipkan wp-content/uploads..."
-if docker compose exec -T wordpress tar \
+if $COMPOSE_CMD exec -T wordpress tar \
     --create \
     --gzip \
     --directory /var/www/html/wp-content \
