@@ -5,6 +5,7 @@ Direktori ini berisi data awal (*seed data*) untuk inisialisasi pertama kali (Da
 ## File Terkelola
 - `seed.sql.gz`: Dump database MySQL terkompresi yang sudah disanitasi dari order dummy, auto-draft, dan cache transients.
 - `uploads-seed.tar.gz`: Arsip media `wp-content/uploads/` berisi aset gambar awal untuk Elementor dan homepage.
+- `plugins-themes-seed.tar.gz`: Arsip `plugins/elementor`, `plugins/elementor-pro`, dan `themes/hello-elementor` untuk deployment fresh environment (Day-0).
 
 ## Cara Kerja
 Saat `make wp-install` dijalankan:

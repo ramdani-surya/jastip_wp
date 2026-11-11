@@ -119,6 +119,11 @@ prod-install:
 	@set -e; \
 	echo "Mengimpor baseline database seed..."; \
 	gunzip -c database/seed.sql.gz | docker compose exec -T db sh -c 'MYSQL_PWD="$$MYSQL_PASSWORD" exec mysql --user="$$MYSQL_USER" "$$MYSQL_DATABASE"'; \
+	if [ -f database/plugins-themes-seed.tar.gz ]; then \
+		echo "Mengekstrak baseline plugins dan theme (Elementor & Hello Elementor)..."; \
+		docker compose exec -T wordpress tar --extract --gzip --directory /var/www/html/wp-content < database/plugins-themes-seed.tar.gz; \
+		docker compose exec -T wordpress chown -R www-data:www-data /var/www/html/wp-content/plugins /var/www/html/wp-content/themes; \
+	fi; \
 	if [ -f database/uploads-seed.tar.gz ]; then \
 		echo "Mengekstrak baseline media uploads..."; \
 		docker compose exec -T wordpress tar --extract --gzip --directory /var/www/html/wp-content < database/uploads-seed.tar.gz; \
