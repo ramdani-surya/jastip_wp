@@ -103,22 +103,22 @@ jobs:
             fi
             cd "$DEPLOY_PATH"
 
-            # 2. Injeksi Environment dari GitHub Secret ke memori RAM (0 byte di disk)
+            # 2. Injeksi Environment dari GitHub Secret (Ephemeral - otomatis dihapus saat deploy selesai)
             if [ -n "$ENV_B64" ]; then
-              echo "[deploy] Memuat variabel environment dari GitHub Secrets ke memori RAM..."
-              DECODED_ENV=$(printf "%s" "$ENV_B64" | base64 -d)
-              while IFS= read -r line || [ -n "$line" ]; do
-                [[ "$line" =~ ^[[:space:]]*# ]] && continue
-                [[ -z "${line// }" ]] && continue
-                if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
-                  k="${BASH_REMATCH[1]}"
-                  v="${BASH_REMATCH[2]}"
-                  if [[ "$v" =~ ^\"(.*)\"$ ]]; then v="${BASH_REMATCH[1]}"; fi
-                  if [[ "$v" =~ ^\'(.*)\'$ ]]; then v="${BASH_REMATCH[1]}"; fi
-                  export "$k=$v"
-                fi
-              done <<< "$DECODED_ENV"
-              echo "[deploy] Variabel environment berhasil dimuat ke RAM (0 byte di disk)."
+              echo "[deploy] Memuat variabel environment dari GitHub Secrets..."
+              TARGET_ENV_FILE=".env.prod"
+              if [ "$TARGET_ENV" != "production" ]; then
+                TARGET_ENV_FILE=".env"
+              fi
+              trap "rm -f $TARGET_ENV_FILE" EXIT INT TERM
+              if printf "%s" "$ENV_B64" | tr -d '\r\n ' | (base64 -di 2>/dev/null || base64 -d) > "$TARGET_ENV_FILE" 2>/tmp/b64.err; then
+                chmod 600 "$TARGET_ENV_FILE"
+                echo "[deploy] File environment $TARGET_ENV_FILE berhasil dimuat (file sementara berhak akses 600, akan otomatis dihapus saat deploy selesai)."
+              else
+                echo "ERROR: Gagal men-decode Base64 dari ENV_FILE secret! Detail error:" >&2
+                cat /tmp/b64.err >&2
+                exit 1
+              fi
             fi
 
             # 3. Snapshot Backup Otomatis sebelum update (Zero-Loss Guarantee)
