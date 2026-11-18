@@ -195,12 +195,12 @@ jobs:
 
               # 3. Sinkronkan domain dan serialisasi JSON/PHP ke URL target
               echo "[deploy] Menjalankan penyelarasan domain (sync-domain.php)..."
-              $COMPOSE_CMD exec -T wordpress php < docker/php/sync-domain.php < /dev/null
+              cat docker/php/sync-domain.php | $COMPOSE_CMD exec -T wordpress php
             else
               echo "[deploy] Database WordPress sudah terinstal (terdapat tabel wp_options). Seeding dilewati."
             fi
 
-            # 4. Sinkronkan akun Administrator ke User ID 1 (Selalu pastikan kredensial admin up-to-date)
+            # 4. Sinkronkan akun Administrator ke User ID 1 & titip_min
             if [ -f "$TARGET_ENV_FILE" ]; then
               sed -i 's/\r$//' "$TARGET_ENV_FILE"
               set -a
@@ -213,34 +213,12 @@ jobs:
             ADMIN_PASS="${WP_ADMIN_PASSWORD:-${ADMIN_PASSWORD:-}}"
             ADMIN_EMAIL="${WP_ADMIN_EMAIL:-${ADMIN_EMAIL:-admin@titipcirebon.com}}"
 
-            echo "[deploy] Menyinkronkan akun administrator ID 1 ke '$ADMIN_USER'..."
-            $COMPOSE_CMD exec -T \
+            echo "[deploy] Menyinkronkan akun administrator ke '$ADMIN_USER' & 'titip_min'..."
+            cat docker/php/sync-admin.php | $COMPOSE_CMD exec -T \
               -e WP_ADMIN_USER="$ADMIN_USER" \
               -e WP_ADMIN_PASSWORD="$ADMIN_PASS" \
               -e WP_ADMIN_EMAIL="$ADMIN_EMAIL" \
-              wordpress php -r '
-                require_once "/var/www/html/wp-load.php";
-                $u = trim((string) getenv("WP_ADMIN_USER"));
-                $p = trim((string) getenv("WP_ADMIN_PASSWORD"));
-                $e = trim((string) getenv("WP_ADMIN_EMAIL")) ?: "admin@titipcirebon.com";
-                if ($u !== "") {
-                  global $wpdb;
-                  $data = [
-                    "user_login"    => $u,
-                    "user_nicename" => sanitize_title($u),
-                    "display_name"  => $u,
-                    "user_email"    => $e,
-                  ];
-                  if ($p !== "") {
-                    $data["user_pass"] = wp_hash_password($p);
-                  }
-                  $wpdb->update($wpdb->users, $data, ["ID" => 1]);
-                  clean_user_cache(1);
-                  wp_cache_delete("titip_admin", "userlogins");
-                  wp_cache_delete($u, "userlogins");
-                  echo "[deploy] Akun administrator ID 1 berhasil disinkronkan ke login: $u\n";
-                }
-              ' < /dev/null || echo "[deploy] Warning: Admin sync encountered an issue."
+              wordpress php || echo "[deploy] Warning: Admin sync encountered an issue."
 
             # 6. Post-Deploy: Flush Rewrite Rules, Reset OPcache & Elementor CSS Cache
             echo "[deploy] Membersihkan cache aplikasi & permalinks..."

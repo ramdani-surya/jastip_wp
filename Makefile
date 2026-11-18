@@ -130,7 +130,9 @@ prod-install:
 		docker compose exec -T wordpress chown -R www-data:www-data /var/www/html/wp-content/uploads; \
 	fi; \
 	echo "Menyelaraskan URL target..."; \
-	docker compose exec -T wordpress php < docker/php/sync-domain.php
+	cat docker/php/sync-domain.php | docker compose exec -T wordpress php; \
+	echo "Menyinkronkan akun administrator..."; \
+	cat docker/php/sync-admin.php | docker compose exec -T wordpress php
 
 # Backup database + uploads ke folder backups/
 backup:
