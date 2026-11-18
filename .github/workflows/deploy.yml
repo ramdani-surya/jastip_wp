@@ -167,10 +167,12 @@ jobs:
             fi
 
             echo "[deploy] Memeriksa status instalasi database WordPress..."
-            TABLE_EXISTS=$($COMPOSE_CMD exec -T db sh -c \
-              'MYSQL_PWD="$MYSQL_PASSWORD" mysql -N -s --user="$MYSQL_USER" "$MYSQL_DATABASE" -e "SHOW TABLES LIKE '\''wp_options'\'';"' < /dev/null 2>/dev/null || echo "")
+            IS_INSTALLED=$($COMPOSE_CMD exec -T wordpress php -r '
+              require "/var/www/html/wp-load.php";
+              echo is_blog_installed() ? "yes" : "no";
+            ' < /dev/null 2>/dev/null || echo "no")
 
-            if [ -z "$TABLE_EXISTS" ]; then
+            if [ "$IS_INSTALLED" != "yes" ]; then
               echo "[deploy] Database kosong terdeteksi (Day-0). Memulai inisialisasi baseline seed..."
 
               # 1. Impor baseline SQL terkompresi langsung ke container db
@@ -237,7 +239,7 @@ jobs:
                 \Elementor\Plugin::$instance->files_manager->clear_cache();
               }
               echo "[deploy] Permalinks and Elementor cache refreshed successfully.\n";
-            ' || echo "[deploy] Warning: Cache flush encountered an issue."
+            ' < /dev/null || echo "[deploy] Warning: Cache flush encountered an issue."
 
             # 7. Automated Health Check (Support HTTPS & HTTP Fallback)
             if [ -n "$DOMAIN" ]; then
