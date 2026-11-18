@@ -114,6 +114,7 @@ jobs:
               trap "rm -f $TARGET_ENV_FILE" EXIT INT TERM
               if printf "%s" "$ENV_B64" | tr -d '\r\n ' | (base64 -di 2>/dev/null || base64 -d) > "$TARGET_ENV_FILE" 2>/tmp/b64.err; then
                 chmod 600 "$TARGET_ENV_FILE"
+                sed -i 's/\r$//' "$TARGET_ENV_FILE"
                 echo "[deploy] File environment $TARGET_ENV_FILE berhasil dimuat (file sementara berhak akses 600, akan otomatis dihapus saat deploy selesai)."
               else
                 echo "ERROR: Gagal men-decode Base64 dari ENV_FILE secret! Detail error:" >&2
@@ -168,6 +169,7 @@ jobs:
 
             echo "[deploy] Memeriksa status instalasi database WordPress..."
             IS_INSTALLED=$($COMPOSE_CMD exec -T wordpress php -r '
+              define("WP_INSTALLING", true);
               require "/var/www/html/wp-load.php";
               echo is_blog_installed() ? "yes" : "no";
             ' < /dev/null 2>/dev/null || echo "no")
@@ -179,7 +181,7 @@ jobs:
               if [ -f "database/seed.sql.gz" ]; then
                 echo "[deploy] Mengimpor database/seed.sql.gz..."
                 gunzip -c database/seed.sql.gz | $COMPOSE_CMD exec -T db sh -c \
-                  'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --user="$MYSQL_USER" "$MYSQL_DATABASE"'
+                  'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --host=127.0.0.1 --user="$MYSQL_USER" "$MYSQL_DATABASE"'
                 echo "[deploy] Baseline SQL berhasil diimpor."
               fi
 
@@ -200,34 +202,45 @@ jobs:
 
             # 4. Sinkronkan akun Administrator ke User ID 1 (Selalu pastikan kredensial admin up-to-date)
             if [ -f "$TARGET_ENV_FILE" ]; then
+              sed -i 's/\r$//' "$TARGET_ENV_FILE"
               set -a
               # shellcheck source=/dev/null
               . "$TARGET_ENV_FILE"
               set +a
             fi
 
-            if [ -n "${WP_ADMIN_USER:-}" ] && [ -n "${WP_ADMIN_PASSWORD:-}" ]; then
-              echo "[deploy] Menyinkronkan akun administrator ID 1 ke '$WP_ADMIN_USER'..."
-              $COMPOSE_CMD exec -T \
-                -e WP_ADMIN_USER="$WP_ADMIN_USER" \
-                -e WP_ADMIN_PASSWORD="$WP_ADMIN_PASSWORD" \
-                -e WP_ADMIN_EMAIL="${WP_ADMIN_EMAIL:-admin@titipcirebon.com}" \
-                wordpress php -r '
-                  require "/var/www/html/wp-load.php";
-                  $u = getenv("WP_ADMIN_USER");
-                  $p = getenv("WP_ADMIN_PASSWORD");
-                  $e = getenv("WP_ADMIN_EMAIL") ?: "admin@titipcirebon.com";
+            ADMIN_USER="${WP_ADMIN_USER:-${ADMIN_USER:-titip_min}}"
+            ADMIN_PASS="${WP_ADMIN_PASSWORD:-${ADMIN_PASSWORD:-}}"
+            ADMIN_EMAIL="${WP_ADMIN_EMAIL:-${ADMIN_EMAIL:-admin@titipcirebon.com}}"
+
+            echo "[deploy] Menyinkronkan akun administrator ID 1 ke '$ADMIN_USER'..."
+            $COMPOSE_CMD exec -T \
+              -e WP_ADMIN_USER="$ADMIN_USER" \
+              -e WP_ADMIN_PASSWORD="$ADMIN_PASS" \
+              -e WP_ADMIN_EMAIL="$ADMIN_EMAIL" \
+              wordpress php -r '
+                require_once "/var/www/html/wp-load.php";
+                $u = trim((string) getenv("WP_ADMIN_USER"));
+                $p = trim((string) getenv("WP_ADMIN_PASSWORD"));
+                $e = trim((string) getenv("WP_ADMIN_EMAIL")) ?: "admin@titipcirebon.com";
+                if ($u !== "") {
                   global $wpdb;
-                  $wpdb->update($wpdb->users, [
+                  $data = [
                     "user_login"    => $u,
                     "user_nicename" => sanitize_title($u),
                     "display_name"  => $u,
                     "user_email"    => $e,
-                  ], ["ID" => 1]);
-                  wp_set_password($p, 1);
-                  echo "[deploy] Akun administrator ID 1 berhasil diperbarui menjadi login: $u.\n";
-                ' < /dev/null || echo "[deploy] Warning: Admin sync encountered an issue."
-            fi
+                  ];
+                  if ($p !== "") {
+                    $data["user_pass"] = wp_hash_password($p);
+                  }
+                  $wpdb->update($wpdb->users, $data, ["ID" => 1]);
+                  clean_user_cache(1);
+                  wp_cache_delete("titip_admin", "userlogins");
+                  wp_cache_delete($u, "userlogins");
+                  echo "[deploy] Akun administrator ID 1 berhasil disinkronkan ke login: $u\n";
+                }
+              ' < /dev/null || echo "[deploy] Warning: Admin sync encountered an issue."
 
             # 6. Post-Deploy: Flush Rewrite Rules, Reset OPcache & Elementor CSS Cache
             echo "[deploy] Membersihkan cache aplikasi & permalinks..."
